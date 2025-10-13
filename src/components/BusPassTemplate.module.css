@@ -1,0 +1,97 @@
+/* Realistic Bus Pass Card Styles */
+:root{
+  --accent: #0ea5e9;
+  --muted: #64748b;
+  --card-width: 900px;
+}
+
+.cardWrapper{
+  display:flex;
+  justify-content:center;
+  padding:1rem;
+}
+
+.card{
+  width:100%;
+  max-width:var(--card-width);
+  background:#fff;
+  border-radius:8px;
+  box-shadow:0 10px 30px rgba(2,6,23,0.12);
+  display:flex;
+  overflow:hidden;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  color:#0f172a;
+}
+
+.leftColumn{
+  width:36%;
+  background: linear-gradient(180deg,var(--accent) 0%, #0369a1 100%);
+  color:white;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+
+.logoArea{ text-align:center }
+.logo{ font-weight:800; font-size:22px; letter-spacing:1px }
+.collegeName{ font-size:12px; opacity:0.95 }
+
+.photoBox{
+  width:160px;
+  height:200px;
+  background:rgba(255,255,255,0.12);
+  border-radius:6px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.photo{ width:100%; height:100%; object-fit:cover }
+.photoPlaceholder{ color:rgba(255,255,255,0.9); font-weight:700 }
+
+.idBlock{ margin-top:6px; text-align:center }
+.regLabel{ font-size:11px; opacity:0.9 }
+.regValue{ font-weight:800; font-size:16px }
+
+.rightColumn{
+  width:64%;
+  padding:18px 22px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.hdrRow{ display:flex; justify-content:space-between; align-items:flex-start }
+.passTitle{ margin:0; font-size:18px; letter-spacing:1px }
+.validUntil{ text-align:right }
+.validLabel{ font-size:11px; color:var(--muted); text-transform:uppercase }
+.validValue{ font-weight:800; font-size:14px }
+
+.infoGrid{ display:flex; flex-direction:column; gap:10px; margin-top:4px }
+.infoRow{ display:flex; gap:12px; align-items:flex-start }
+.infoLabel{ width:140px; color:var(--muted); font-size:12px }
+.infoValue{ flex:1; background:#f8fafc; padding:10px 12px; border-radius:6px; font-weight:700 }
+
+.footerRow{ display:flex; justify-content:space-between; align-items:center; margin-top:auto }
+.issuer{ font-size:12px; color:var(--muted) }
+.qrPlaceholder{ width:80px; height:80px; border-radius:6px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-weight:700 }
+
+/* Responsive / print */
+@media (max-width: 900px){
+  :root{ --card-width: 700px }
+  .card{ flex-direction:column }
+  .leftColumn{ width:100%; padding:16px; flex-direction:row; gap:12px; align-items:center }
+  .photoBox{ width:110px; height:140px }
+  .rightColumn{ width:100%; padding:14px }
+  .infoLabel{ width:120px }
+}
+
+@media print{
+  body *{ visibility:visible }
+  .cardWrapper{ page-break-inside: avoid }
+  .card{ box-shadow:none; border-radius:0 }
+}
+
+/* end of file - clean styles */
