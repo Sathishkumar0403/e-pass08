@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaIdCard, FaGraduationCap, FaPhone, FaUserFriends, FaHome, FaBus, FaCalendarAlt, FaImage, FaIdBadge, FaInfoCircle, FaCogs, FaSignOutAlt, FaSpinner, FaTimes, FaEye, FaTrash } from 'react-icons/fa';
+import { FaUser, FaIdCard, FaGraduationCap, FaPhone, FaUserFriends, FaHome, FaBus, FaCalendarAlt, FaImage, FaIdBadge, FaInfoCircle, FaCogs, FaSignOutAlt, FaSpinner, FaTimes, FaEye, FaTrash, FaFileExcel } from 'react-icons/fa';
 import { adminLogin, getApplications, approveApplication, rejectApplication, deleteApplication } from '../utils/api';
 import styles from './AdminDashboard.module.css';
 
@@ -10,6 +10,9 @@ function AdminDashboard() {
   const [fetchingApps, setFetchingApps] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [filteredApplications, setFilteredApplications] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +23,20 @@ function AdminDashboard() {
     }
     fetchApplications();
   }, [navigate]);
+
+  useEffect(() => {
+    const lowercasedFilter = searchTerm.toLowerCase();
+    const filtered = applications.filter(app => {
+        const matchesSearch = (
+            (app.name && app.name.toLowerCase().includes(lowercasedFilter)) ||
+            (app.regNo && app.regNo.toLowerCase().includes(lowercasedFilter)) ||
+            (app.mobile && app.mobile.includes(searchTerm))
+        );
+        const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+    setFilteredApplications(filtered);
+  }, [searchTerm, statusFilter, applications]);
 
   const fetchApplications = async () => {
     setFetchingApps(true);
@@ -74,6 +91,32 @@ function AdminDashboard() {
     setImageModalOpen(true);
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await fetch('/api/admin/export-excel');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        throw new Error('Invalid file format received from server.');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'student_applications.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      setError(err.message || 'Failed to export data');
+    }
+  };
+
   const closeImageModal = () => {
     setImageModalOpen(false);
     setSelectedImage(null);
@@ -85,12 +128,20 @@ function AdminDashboard() {
     <div className={styles.dashboardContainer}>
       <div className={styles.header}>
         <h2 className={styles.dashboardTitle}>Admin Dashboard</h2>
-        <button 
-          onClick={handleLogout}
-          className={styles.logoutButton}
-        >
-          <FaSignOutAlt /> Logout
-        </button>
+        <div className={styles.headerActions}>
+          <button 
+            onClick={handleExportExcel}
+            className={`${styles.actionButton} ${styles.exportButton}`}
+          >
+            <FaFileExcel /> Export to Excel
+          </button>
+          <button 
+            onClick={handleLogout}
+            className={styles.logoutButton}
+          >
+            <FaSignOutAlt /> Logout
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -110,6 +161,25 @@ function AdminDashboard() {
         </div>
       ) : (
         <div className={styles.tableContainer}>
+          <div className={styles.filterContainer}>
+            <input
+              type="text"
+              placeholder="Search by name, reg no, mobile..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className={styles.statusFilter}
+            >
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
           <table className={styles.applicationsTable}>
             <thead className={styles.tableHeader}>
               <tr>
@@ -125,12 +195,15 @@ function AdminDashboard() {
                 <th className={styles.tableHeaderCell}><FaIdBadge /> Aadhar No</th>
                 <th className={styles.tableHeaderCell}><FaImage /> Aadhar Photo</th>
                 <th className={styles.tableHeaderCell}><FaImage /> College ID Photo</th>
+                <th className={styles.tableHeaderCell}><FaImage /> Fees Bill</th>
+                <th className={styles.tableHeaderCell}><FaIdCard /> Pass No</th>
+                <th className={styles.tableHeaderCell}><FaBus /> Bus No</th>
                 <th className={styles.tableHeaderCell}><FaInfoCircle /> Status</th>
                 <th className={styles.tableHeaderCell}><FaCogs /> Action</th>
               </tr>
             </thead>
             <tbody>
-              {applications.map(app => (
+              {filteredApplications.map(app => (
                 <tr key={app.id || app._id} className={`${styles.tableRow} ${app.status === 'approved' ? styles.approved : app.status === 'rejected' ? styles.rejected : ''}`}>
                   <td className={styles.tableCell}><FaUser style={{ marginRight: 4, color: '#6366f1' }} />{app.name}</td>
                   <td className={styles.tableCell}><FaIdCard style={{ marginRight: 4, color: '#0ea5e9' }} />{app.regNo}</td>
@@ -192,6 +265,25 @@ function AdminDashboard() {
                       </div>
                     ) : '-'}
                   </td>
+                  <td className={styles.tableCell}>
+                    {app.feesBillPhoto ? (
+                      <div className={styles.imageContainer}>
+                        <img 
+                          src={app.feesBillPhoto} 
+                          alt="Fees Bill" 
+                          className={styles.thumbnailImage}
+                          onClick={() => openImageModal(app.feesBillPhoto, `${app.name}'s Fees Bill`)}
+                        />
+                        <FaEye 
+                          className={styles.viewIcon}
+                          onClick={() => openImageModal(app.feesBillPhoto, `${app.name}'s Fees Bill`)}
+                          title="View full size"
+                        />
+                      </div>
+                    ) : '-'}
+                  </td>
+                  <td className={styles.tableCell}>{app.passNumber || '-'}</td>
+                  <td className={styles.tableCell}>{app.busNumber || '-'}</td>
                   <td className={styles.tableCell}>
                     <span className={`${styles.statusBadge} ${styles[app.status]}`}>
                       {app.status}

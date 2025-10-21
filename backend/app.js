@@ -16,7 +16,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: 'http://localhost:3000',
+  optionsSuccessStatus: 200,
+  exposedHeaders: ['Content-Disposition'],
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -55,6 +60,8 @@ async function ensureSchema() {
       collegeIdPhoto TEXT,
       status TEXT DEFAULT 'pending',
       qrData TEXT,
+      passNumber TEXT,
+      busNumber TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -72,6 +79,8 @@ async function ensureSchema() {
     { name: 'collegeIdPhoto', sql: "ALTER TABLE student_applications ADD COLUMN collegeIdPhoto TEXT" },
     { name: 'status', sql: "ALTER TABLE student_applications ADD COLUMN status TEXT" },
     { name: 'qrData', sql: "ALTER TABLE student_applications ADD COLUMN qrData TEXT" },
+    { name: 'passNumber', sql: "ALTER TABLE student_applications ADD COLUMN passNumber TEXT" },
+    { name: 'busNumber', sql: "ALTER TABLE student_applications ADD COLUMN busNumber TEXT" },
   { name: 'createdAt', sql: "ALTER TABLE student_applications ADD COLUMN createdAt DATETIME" },
   { name: 'updatedAt', sql: "ALTER TABLE student_applications ADD COLUMN updatedAt DATETIME" }
   ];

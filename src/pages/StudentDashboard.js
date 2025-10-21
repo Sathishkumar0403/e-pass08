@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FaUserGraduate, FaIdCard, FaCalendarAlt, FaSignInAlt, FaQrcode, FaInfoCircle, FaDownload } from 'react-icons/fa';
 import styles from './StudentDashboard.module.css';
-import { studentLogin } from '../utils/api';
+import { studentLogin, uploadFeesBill } from '../utils/api';
 import { QRCodeCanvas } from 'qrcode.react';
 import BusPassTemplate from '../components/BusPassTemplate';
 import { downloadBusPass } from '../utils/downloadPass';
@@ -11,6 +11,7 @@ function StudentDashboard() {
   const [studentData, setStudentData] = useState(null);
   const [error, setError] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -38,6 +39,26 @@ function StudentDashboard() {
       setError('Failed to download bus pass. Please try again.');
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) {
+      setError('Please select a file to upload.');
+      return;
+    }
+
+    try {
+      setError('');
+      // Add a state for loading
+      const response = await uploadFeesBill(studentData.regNo, selectedFile);
+      alert(response.message); // Or use a more sophisticated notification
+    } catch (error) {
+      setError(error.message || 'An error occurred during file upload.');
     }
   };
 
@@ -81,14 +102,26 @@ function StudentDashboard() {
           <div className={styles.passCardWrapper}>
             <div className={styles.headerSection}>
               <h2 className={styles.title}>Your Digital Bus Pass</h2>
-              <button
-                onClick={handleDownload}
-                disabled={isDownloading}
-                className={styles.downloadBtn}
-              >
-                <FaDownload style={{ marginRight: 6 }} />
-                {isDownloading ? 'Downloading...' : 'Download JPEG'}
-              </button>
+              <div className={styles.headerActions}>
+                <button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className={styles.downloadBtn}
+                >
+                  <FaDownload style={{ marginRight: 6 }} />
+                  {isDownloading ? 'Downloading...' : 'Download JPEG'}
+                </button>
+                <div className={styles.uploadSectionInline}>
+                  <input
+                    type="file"
+                    id="feesBill"
+                    name="feesBill"
+                    onChange={handleFileChange}
+                    className={styles.inputInline}
+                  />
+                  <button onClick={handleFileUpload} className={styles.buttonInline}>Upload Fees Bill</button>
+                </div>
+              </div>
             </div>
             
             {/* New Bus Pass Template */}
@@ -134,6 +167,8 @@ function StudentDashboard() {
             </div>
           </div>
         )}
+
+        {/* The upload section has been moved inline with the header actions */}
       </div>
     </div>
   );

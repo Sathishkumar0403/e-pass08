@@ -141,6 +141,23 @@
   box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
 }
 
+.headerActions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.exportButton {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3);
+}
+
+.exportButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(22, 163, 74, 0.4);
+}
+
 .errorMessage {
   background: #fef2f2;
   color: #dc2626;
@@ -195,6 +212,44 @@
   padding: 3rem;
   color: #64748b;
   font-size: 1.1rem;
+}
+
+.filterContainer {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.searchInput,
+.statusFilter {
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+  transition: all 0.3s ease;
+  height: 48px;
+  box-sizing: border-box;
+}
+
+.searchInput:focus,
+.statusFilter:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.searchInput {
+  flex-grow: 1;
+  min-width: 250px;
+}
+
+.statusFilter {
+  min-width: 180px;
+  cursor: pointer;
 }
 
 .tableContainer {

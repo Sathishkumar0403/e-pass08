@@ -155,4 +155,20 @@ export async function deleteApplication(id) {
     throw new Error(error.message || 'Failed to delete application');
   }
 }
-  
+
+// Upload fees bill (student)
+export async function uploadFeesBill(regNo, file) {
+  try {
+    const formData = new FormData();
+    formData.append("regNo", regNo);
+    formData.append("feesBill", file);
+
+    return await apiCall(`${API_BASE}/student/upload-fees-bill`, {
+      method: "POST",
+      body: formData,
+    });
+  } catch (error) {
+    console.error("Error uploading fees bill:", error);
+    throw new Error(error.message || 'Failed to upload fees bill');
+  }
+}

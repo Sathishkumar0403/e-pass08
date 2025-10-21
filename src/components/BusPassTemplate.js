@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './BusPassTemplate.module.css';
+import { QRCodeSVG } from 'qrcode.react';
 
 function BusPassTemplate({ studentData }) {
   if (!studentData) return null;
@@ -18,7 +19,7 @@ function BusPassTemplate({ studentData }) {
 
   return (
     <div className={styles.cardWrapper}>
-      <div className={styles.card} role="region" aria-label="Student Bus Pass">
+      <div id="bus-pass-template" className={styles.card} role="region" aria-label="Student Bus Pass">
         <div className={styles.leftColumn}>
           <div className={styles.logoArea}>
             <div className={styles.logo}>E-BUS</div>
@@ -72,7 +73,20 @@ function BusPassTemplate({ studentData }) {
 
           <div className={styles.footerRow}>
             <div className={styles.issuer}>Issued by: A.E.R.I Transport</div>
-            <div className={styles.qrPlaceholder}>QR</div>
+            <div className={styles.qrBox}>
+              <QRCodeSVG
+                value={JSON.stringify({
+                  regNo,
+                  name,
+                  branch,
+                  year,
+                  validTill
+                })}
+                size={100}
+                level="H"
+                includeMargin={true}
+              />
+            </div>
           </div>
         </div>
       </div>

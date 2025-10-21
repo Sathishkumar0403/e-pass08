@@ -49,6 +49,17 @@ const __dirname = path.dirname(__filename);
       CREATE INDEX IF NOT EXISTS idx_created_at ON student_applications(createdAt);
     `);
 
+    // Add new column for fees bill photo, ignore error if it already exists
+    try {
+      await db.exec('ALTER TABLE student_applications ADD COLUMN feesBillPhoto TEXT');
+      console.log('➕ Added feesBillPhoto column to student_applications table.');
+    } catch (err) {
+      if (!err.message.includes('duplicate column name')) {
+        throw err;
+      }
+      // Column already exists, which is fine
+    }
+
     console.log('✅ Database initialized successfully!');
     console.log(`📁 Database file: ${path.join(__dirname, 'buspass.sqlite')}`);
     

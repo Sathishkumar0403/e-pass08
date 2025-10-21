@@ -54,6 +54,7 @@ router.get("/pass/:regNo", async (req, res) => {
     
     // Parse QR data if available
     let qrData = null;
+    
     if (student.qrData) {
       try {
         qrData = JSON.parse(student.qrData);
@@ -293,6 +294,54 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Login failed. Please try again." });
   }
 });
+
+// =============================
+// Upload fees bill
+// =============================
+router.post(
+  "/upload-fees-bill",
+  upload.single("feesBill"),
+  async (req, res) => {
+    try {
+      if (!req.db) {
+        console.error("Database connection not available");
+        return res
+          .status(500)
+          .json({ error: "Database connection failed" });
+      }
+
+      const db = req.db;
+      const { regNo } = req.body;
+
+      if (!regNo) {
+        return res.status(400).json({ error: "Registration number is required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "Fees bill photo is required" });
+      }
+
+      const feesBillPhoto = `/uploads/${req.file.filename}`;
+
+      const result = await db.run(
+        "UPDATE student_applications SET feesBillPhoto = ? WHERE regNo = ?",
+        [feesBillPhoto, regNo]
+      );
+
+      if (result.changes === 0) {
+        return res.status(404).json({ error: "Student not found." });
+      }
+
+      res.json({
+        message: "Fees bill uploaded successfully",
+        filePath: feesBillPhoto,
+      });
+    } catch (err) {
+      console.error("Error uploading fees bill:", err);
+      res.status(500).json({ error: "Failed to upload fees bill" });
+    }
+  }
+);
 
 // =============================
 // Serve uploaded images

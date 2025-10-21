@@ -154,6 +154,40 @@
   box-shadow: none;
 }
 
+.headerActions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.uploadSectionInline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.inputInline {
+  font-size: 12px;
+  max-width: 150px;
+  color: black;
+}
+
+.buttonInline {
+  background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.buttonInline:hover {
+  background: linear-gradient(90deg, #ea580c 0%, #c2410c 100%);
+}
+
 /* Bus pass template styles are now handled by the BusPassTemplate component */
 
 .qrCodeSection {

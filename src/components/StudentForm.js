@@ -282,7 +282,7 @@ function StudentForm() {
       </div>
       </div>
       <div className={styles.fieldGroup}>
-        <label htmlFor="collegeIdPhoto" className={styles.label}><FaImage style={{ marginRight: 6, color: '#6366f1' }} />Upload College ID Card Photo</label>
+        <label htmlFor="collegeIdPhoto" className={styles.label}><FaImage style={{ marginRight: 6, color: '#6366f1' }} />Upload College ID Card Photo or tution fee bill</label>
       <div className={styles.fileInputRow}>
         <input
           type="file"

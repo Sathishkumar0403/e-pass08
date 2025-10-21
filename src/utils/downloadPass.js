@@ -7,20 +7,26 @@ export const downloadBusPass = async (elementId, filename = 'bus-pass') => {
       throw new Error('Bus pass element not found');
     }
 
-    // Wait a bit for any images to load
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for images to load
+    const images = element.getElementsByTagName('img');
+    await Promise.all([...images].map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+    }));
 
     // Create canvas from the element
     const canvas = await html2canvas(element, {
-      backgroundColor: null,
+      backgroundColor: '#ffffff',
       scale: 2, // Higher resolution for better quality
       useCORS: true,
       allowTaint: true,
       logging: false,
       width: element.offsetWidth,
       height: element.offsetHeight,
-      imageTimeout: 5000, // Wait up to 5 seconds for images
-      removeContainer: true
+      imageTimeout: 15000, // Wait up to 15 seconds for images
     });
 
     // Convert canvas to JPEG blob

@@ -86,11 +86,12 @@ function BusPassDisplay() {
 
   const handleDownload = async () => {
     try {
+      setError(null);
       setIsDownloading(true);
       await downloadBusPass('bus-pass-template', `bus-pass-${studentData.regNo}`);
     } catch (error) {
       console.error('Download failed:', error);
-      setError('Failed to download bus pass. Please try again.');
+      setError('Failed to download bus pass: ' + (error.message || 'Please try again.'));
     } finally {
       setIsDownloading(false);
     }
