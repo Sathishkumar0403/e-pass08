@@ -63,13 +63,13 @@
 
 .heroTitleMain {
   display: block;
-  color: white;
+  color: rgb(21, 20, 20);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .heroTitleSub {
   display: block;
-  color: white;
+  color: rgb(18, 17, 17);
   font-size: 0.7em;
   margin-top: 0.5rem;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -79,7 +79,7 @@
   font-size: 1.25rem;
   line-height: 1.6;
   margin-bottom: 2.5rem;
-  color: white;
+  color: rgb(153, 98, 248);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
@@ -90,7 +90,7 @@
 }
 
 .primaryButton {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, #41d3f1 0%, #73bfeb 100%);
   color: #1e40af;
   padding: 1rem 2rem;
   border: none;

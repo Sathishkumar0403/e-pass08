@@ -9,7 +9,7 @@ A modern web application for managing student bus pass applications with admin a
 - **File Management**: Support for photo, Aadhar, and college ID uploads
 - **QR Code Generation**: Automatic QR code generation for approved passes
 - **Responsive Design**: Modern UI with Tailwind CSS
-- **Real-time Updates**: Live application status updates
+- **export Students**: databse into excel or filter and search data 
 
 ## Tech Stack
 
@@ -88,7 +88,7 @@ The frontend will run on `http://localhost:3000`
 
 ### Admin Access
 - **Username**: `admin`
-- **Password**: `S3cureP@ssw0rd2025!`
+- **Password**: `Admin@demo`
 - Navigate to `/admin` to login
 - After login, you'll be redirected to `/admin/dashboard`
 
