@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaQrcode, FaTimes, FaCheckCircle } from 'react-icons/fa';
+import { FaQrcode, FaTimes, FaCheckCircle, FaClock, FaBus, FaIdCard } from 'react-icons/fa';
+import styles from './QRScanner.module.css';
+import MobilePassView from './MobilePassView';
 import BusPassTemplate from './BusPassTemplate';
 
 function QRScanner() {
@@ -71,22 +73,52 @@ function QRScanner() {
       dob: "2002-05-15",
       mobile: "9876543210",
       photo: "1757734786412-957329662-pavan passport.jpg", // Use existing photo
-      passUrl: "http://localhost:3000/pass/6176AC22UC5094"
+      
     };
     setScannedData(sampleData);
     stopScanning();
   };
 
-  const handleQRData = (data) => {
+  const handleQRData = async (data) => {
     try {
       // Try to parse as JSON first
       const parsedData = JSON.parse(data);
+      
+      // Check if the pass is cancelled
+      if (parsedData.cancelled) {
+        setError('This pass has been cancelled and is no longer valid');
+        setScannedData({
+          ...parsedData,
+          status: 'cancelled',
+          cancelMessage: `Cancelled on ${new Date(parsedData.cancelledAt).toLocaleDateString()} by ${parsedData.cancelledBy}`
+        });
+        return;
+      }
+
+      // Check pass validity with the server
+      const response = await fetch(`/api/verify-pass/${parsedData.passNo}`);
+      const verificationData = await response.json();
+
+      if (!verificationData.valid) {
+        setError(verificationData.message);
+        setScannedData({
+          ...parsedData,
+          status: 'invalid',
+          invalidMessage: verificationData.message
+        });
+        return;
+      }
+
       if (parsedData.passUrl) {
-        // If it has a passUrl, redirect to the visual bus pass page
         window.location.href = parsedData.passUrl;
         return;
       }
-      setScannedData(parsedData);
+      
+      setScannedData({
+        ...parsedData,
+        status: 'valid',
+        verifiedAt: new Date().toISOString()
+      });
     } catch (e) {
       // If not JSON, check if it's a URL
       if (data.startsWith('http')) {
@@ -114,32 +146,28 @@ function QRScanner() {
 
   if (scannedData) {
     // If it's raw data, show it as text
-    if (scannedData.rawData) {
-      return (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-lg shadow-lg p-8 border-2 border-blue-200 mt-8"
-        >
-          <div className="flex items-center justify-between w-full mb-4">
-            <h2 className="text-lg font-bold text-blue-700">
-              <FaCheckCircle style={{ marginRight: 8, color: '#22c55e', verticalAlign: 'middle' }} />
-              QR Code Scanned Successfully
-            </h2>
-            <button
-              onClick={clearResult}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <FaTimes size={20} />
-            </button>
+    // If we have scanned data, show the mobile pass view
+    if (scannedData) {
+      try {
+        const passData = typeof scannedData === 'string' ? JSON.parse(scannedData) : scannedData;
+        return (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="p-4"
+          >
+            <MobilePassView passData={passData} />
+          </motion.div>
+        );
+      } catch (error) {
+        console.error('Error parsing pass data:', error);
+        return (
+          <div className="p-4 bg-red-100 text-red-700 rounded-lg">
+            Invalid QR code format. Please scan a valid bus pass QR code.
           </div>
-          <div className="bg-gray-100 p-4 rounded-lg w-full max-w-md">
-            <h3 className="font-bold text-gray-800 mb-2">Scanned Data:</h3>
-            <p className="text-gray-700 break-all">{scannedData.rawData}</p>
-          </div>
-        </motion.div>
-      );
+        );
+      }
     }
 
     // If it's structured data, show the bus pass template
@@ -148,21 +176,112 @@ function QRScanner() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-lg shadow-lg p-8 border-2 border-blue-200 mt-8"
+        className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-lg shadow-lg p-8 border-2 border-blue-200 mt-8 max-w-4xl mx-auto"
       >
-        <div className="flex items-center justify-between w-full mb-4">
-          <h2 className="text-lg font-bold text-blue-700">
-            <FaCheckCircle style={{ marginRight: 8, color: '#22c55e', verticalAlign: 'middle' }} />
-            QR Code Scanned Successfully
-          </h2>
+        <div className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-t-lg mb-6 flex items-center justify-between">
+          <div className="flex items-center">
+            <FaQrcode className="text-2xl mr-3" />
+            <h2 className="text-xl font-bold">Pass Verification Result</h2>
+          </div>
           <button
             onClick={clearResult}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-white hover:text-gray-200 transition-colors"
           >
             <FaTimes size={20} />
           </button>
         </div>
-        <BusPassTemplate studentData={scannedData} />
+
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Status Card */}
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <div className={`text-lg font-bold mb-4 flex items-center ${
+              scannedData.status === 'cancelled' ? 'text-red-600' :
+              scannedData.status === 'invalid' ? 'text-yellow-600' :
+              'text-green-600'
+            }`}>
+              {scannedData.status === 'cancelled' ? (
+                <>
+                  <FaTimes className="mr-2" />
+                  Pass Cancelled
+                </>
+              ) : scannedData.status === 'invalid' ? (
+                <>
+                  <FaTimes className="mr-2" />
+                  Invalid Pass
+                </>
+              ) : (
+                <>
+                  <FaCheckCircle className="mr-2" />
+                  <span className="text-green-600 font-bold">APPROVED</span>
+                </>
+              )}
+            </div>
+            
+            {(scannedData.status === 'cancelled' || scannedData.status === 'invalid') && (
+              <div className={`p-4 rounded-lg mb-4 ${
+                scannedData.status === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'
+              }`}>
+                {scannedData.status === 'cancelled' ? scannedData.cancelMessage : scannedData.invalidMessage}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600">Verification Time</span>
+                <span className="font-semibold">{new Date().toLocaleTimeString()}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600">Pass Status</span>
+                <span className={`font-semibold ${
+                  scannedData.status === 'cancelled' ? 'text-red-600' :
+                  scannedData.status === 'invalid' ? 'text-yellow-600' :
+                  'text-green-600'
+                }`}>
+                  {scannedData.status === 'cancelled' ? 'CANCELLED' :
+                   scannedData.status === 'invalid' ? 'INVALID' :
+                   'ACTIVE'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600">Valid Until</span>
+                <span className="font-semibold">{scannedData.validTill}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pass Details Card */}
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <h3 className="text-lg font-bold mb-4 text-gray-800">Pass Details</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600">Name</span>
+                <span className="font-semibold">{scannedData.name}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600">Registration No.</span>
+                <span className="font-semibold">{scannedData.regNo}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600">Branch/Year</span>
+                <span className="font-semibold">{scannedData.branch} {scannedData.year}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600">Bus No.</span>
+                <span className="font-semibold">{scannedData.busNo}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600">Pass No.</span>
+                <span className="font-semibold">{scannedData.passNo}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Full Bus Pass Template */}
+        <div className="w-full">
+          <h3 className="text-lg font-bold mb-4 text-gray-800">Original Pass</h3>
+          <BusPassTemplate studentData={scannedData} />
+        </div>
       </motion.div>
     );
   }

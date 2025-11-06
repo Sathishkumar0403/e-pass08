@@ -4,8 +4,237 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
 
 const router = express.Router();
+
+// Resolve module directory early for path usage below
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Database connection configuration
+const dbConfig = {
+  // Use the backend-local SQLite file to match app.js
+  filename: path.join(__dirname, '..', 'buspass.sqlite'),
+  driver: sqlite3.Database
+};
+
+// Log the database file path for debugging
+console.log('Database path:', dbConfig.filename);
+
+// Check if database file exists
+if (!fs.existsSync(dbConfig.filename)) {
+  console.error('Database file not found at:', dbConfig.filename);
+  // Create the database directory if it doesn't exist
+  const dbDir = path.dirname(dbConfig.filename);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+  console.log('Created database directory:', dbDir);
+  console.error('Please run the database initialization script first!');
+  process.exit(1);
+}
+
+// Helper function to get database connection
+async function getDb() {
+  try {
+    return await open({
+      ...dbConfig,
+      mode: sqlite3.OPEN_READWRITE
+    });
+  } catch (error) {
+    console.error('Failed to connect to database:', error);
+    throw new Error('Database connection failed');
+  }
+}
+
+router.post("/request-cancellation", async (req, res) => {
+  let db;
+  try {
+    console.log('Received cancellation request:', req.body);
+
+    const { regNo, reason } = req.body || {};
+    if (!regNo) {
+      return res.status(400).json({
+        error: "Registration number is required",
+        receivedData: req.body
+      });
+    }
+
+    // Connect to DB
+    try {
+      db = await getDb();
+      console.log('Database connection established');
+    } catch (dbError) {
+      console.error('Database connection error:', dbError);
+      return res.status(500).json({
+        error: "Failed to connect to database",
+        details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      });
+    }
+
+    // Use a transaction for consistency
+    await db.run('BEGIN IMMEDIATE');
+
+    // Fetch student
+    const student = await db.get(
+      `SELECT 
+        id,
+        status,
+        cancelled,
+        cancellation_requested,
+        cancellation_reason,
+        cancellation_requested_at,
+        cancelled_at
+       FROM student_applications WHERE regNo = ?`,
+      [regNo]
+    );
+
+    if (!student) {
+      await db.run('ROLLBACK');
+      return res.status(404).json({
+        error: `Student with registration number ${regNo} not found`,
+        regNo
+      });
+    }
+
+    if (student.status !== 'approved') {
+      await db.run('ROLLBACK');
+      return res.status(400).json({
+        error: "Only approved passes can be cancelled",
+        currentStatus: student.status
+      });
+    }
+
+    if (student.cancelled) {
+      await db.run('ROLLBACK');
+      return res.status(400).json({
+        error: "Pass is already cancelled",
+        cancelledAt: student.cancelled_at
+      });
+    }
+
+    if (student.cancellation_requested) {
+      await db.run('ROLLBACK');
+      return res.status(400).json({
+        error: "Cancellation already requested",
+        requestedAt: student.cancellation_requested_at
+      });
+    }
+
+    // Perform update
+    const result = await db.run(
+      `UPDATE student_applications SET
+         cancellation_requested = 1,
+         cancellation_reason = ?,
+         cancellation_requested_at = CURRENT_TIMESTAMP,
+         updatedAt = CURRENT_TIMESTAMP
+       WHERE regNo = ?`,
+      [reason || 'No reason provided', regNo]
+    );
+
+    if (result.changes === 0) {
+      await db.run('ROLLBACK');
+      return res.status(500).json({ error: "No records were updated" });
+    }
+
+    await db.run('COMMIT');
+
+    return res.json({
+      message: "Cancellation request submitted successfully",
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    try {
+      if (db) await db.run('ROLLBACK');
+    } catch {}
+    console.error("Error in request-cancellation:", {
+      message: err.message,
+      stack: err.stack,
+      body: req.body,
+      regNo: req.body?.regNo
+    });
+    return res.status(500).json({
+      error: "Failed to process cancellation request",
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  } finally {
+    if (db) await db.close();
+  }
+});
+
+// =============================
+// Check cancellation status
+// =============================
+router.get("/cancellation-status/:regNo", async (req, res) => {
+  let db;
+  try {
+    const { regNo } = req.params;
+    console.log('Checking cancellation status for:', regNo);
+
+    if (!regNo) {
+      return res.status(400).json({ 
+        error: "Registration number is required",
+        receivedParams: req.params
+      });
+    }
+
+    // Get database connection
+    db = await getDb();
+    
+    // Check if the student exists and get cancellation status
+    const result = await db.get(
+      `SELECT 
+        cancellation_requested as cancellationRequested,
+        cancellation_reason as cancellationReason,
+        cancelled as isCancelled,
+        cancelled_at as cancelledAt,
+        cancelled_by as cancelledBy
+      FROM student_applications 
+      WHERE regNo = ?`,
+      [regNo]
+    );
+
+    console.log('Cancellation status result:', result);
+
+    if (!result) {
+      return res.status(404).json({ 
+        error: "Student not found",
+        regNo
+      });
+    }
+
+    res.json({
+      success: true,
+      cancellationRequested: !!result.cancellationRequested,
+      cancellationReason: result.cancellationReason || null,
+      isCancelled: !!result.isCancelled,
+      cancelledAt: result.cancelledAt || null,
+      cancelledBy: result.cancelledBy || null
+    });
+  } catch (err) {
+    console.error("Error in cancellation-status endpoint:", {
+      message: err.message,
+      stack: err.stack,
+      params: req.params
+    });
+    
+    res.status(500).json({ 
+      error: "Failed to check cancellation status",
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  } finally {
+    // Close the database connection
+    if (db) {
+      try {
+        await db.close();
+      } catch (closeErr) {
+        console.error('Error closing database connection:', closeErr);
+      }
+    }
+  }
+});
 
 // =============================
 // Get student details by regNo (for verification)
@@ -45,7 +274,7 @@ router.get("/pass/:regNo", async (req, res) => {
       return res.status(400).json({ error: "Registration number required" });
     }
     const student = await db.get(
-      "SELECT name, regNo, route, validity, photo, qrData, branchYear, dob, mobile FROM student_applications WHERE regNo = ? AND status = 'approved'",
+      "SELECT name, regNo, route, validity, photo, qrData, branchYear, dob, mobile, college, busNo, userType, passNo FROM student_applications WHERE regNo = ? AND status = 'approved'",
       [regNo]
     );
     if (!student) {
@@ -74,6 +303,10 @@ router.get("/pass/:regNo", async (req, res) => {
       branchYear: student.branchYear,
       dob: student.dob,
       mobile: student.mobile,
+      college: student.college || '',
+      busNo: student.busNo || '',
+      userType: student.userType || 'student',
+      passNo: student.passNo || '',
       qrData: qrData
     };
     
@@ -84,13 +317,12 @@ router.get("/pass/:regNo", async (req, res) => {
   }
 });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// (moved __filename/__dirname definition to the top)
 
 // =============================
 // Ensure uploads directory exists
 // =============================
-const uploadDir = path.join(__dirname, "uploads");
+const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -153,6 +385,9 @@ router.post(
         route,
         validity,
         aadharNumber,
+        college,    // NEW
+        busNo,      // NEW (from dropdown)
+        userType    // NEW (student/staff, toggle)
       } = req.body;
 
       // Validate required fields
@@ -212,13 +447,29 @@ router.post(
       const aadharPhoto = `/uploads/${files.aadharPhoto[0].filename}`;
       const collegeIdPhoto = `/uploads/${files.collegeIdPhoto[0].filename}`;
 
+      // Generate pass number (should be unique and consistent if user applies again with same regNo)
+      // Example: 'BP-REGNO-YYYYMMDDHHmmss' for demo, alternatively, use database id for stable serial
+      const now = new Date();
+      const pad = (n) => n.toString().padStart(2, '0');
+      const passNo =
+        'BP-' +
+        regNo +
+        '-' +
+        now.getFullYear().toString() +
+        pad(now.getMonth() + 1) +
+        pad(now.getDate()) +
+        pad(now.getHours()) +
+        pad(now.getMinutes()) +
+        pad(now.getSeconds());
+
       // Save application in DB
       await db.run(
         `INSERT INTO student_applications (
           name, dob, regNo, branchYear, mobile, parentMobile, 
           address, route, validity, aadharNumber, photo, 
-          aadharPhoto, collegeIdPhoto, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+          aadharPhoto, collegeIdPhoto, status, 
+          college, busNo, userType, passNo
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)` ,
         [
           name,
           dob,
@@ -233,6 +484,10 @@ router.post(
           photo,
           aadharPhoto,
           collegeIdPhoto,
+          college || '',
+          busNo || '',
+          userType || 'student',
+          passNo
         ]
       );
 
@@ -283,11 +538,14 @@ router.post("/login", async (req, res) => {
         collegeIdPhoto,
         ...safeStudent
       } = student;
+      // Ensure props are always present for frontend display
+      safeStudent.college = student.college || '';
+      safeStudent.busNo = student.busNo || '';
+      safeStudent.userType = student.userType || 'student';
+      safeStudent.passNo = student.passNo || '';
       res.json(safeStudent);
     } else {
-      res
-        .status(404)
-        .json({ error: "Student not found. Check credentials." });
+      res.status(404).json({ error: "Student not found. Check credentials." });
     }
   } catch (err) {
     console.error("Error in student login:", err);
@@ -370,6 +628,11 @@ router.get("/uploads/:filename", (req, res) => {
     console.error("Error serving image:", err);
     res.status(500).json({ error: "Failed to serve image" });
   }
+});
+
+// Health check route for backend connectivity
+router.get('/ping', (req, res) => {
+  res.json({ status: 'ok', message: 'Student API is reachable' });
 });
 
 // =============================

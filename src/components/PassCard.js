@@ -22,7 +22,17 @@ function PassCard({ pass }) {
         <div className={styles.infoSection}>
           <div className={styles.photoSection}>
             <div className={styles.photoBox}>
-              STUDENT PHOTO
+              {pass.photo ? (
+                <img 
+                  src={pass.photo} 
+                  alt={`${pass.name}'s photo`}
+                  className={styles.photo}
+                />
+              ) : (
+                <div className={styles.photoPlaceholder}>
+                  STUDENT PHOTO
+                </div>
+              )}
             </div>
           </div>
 

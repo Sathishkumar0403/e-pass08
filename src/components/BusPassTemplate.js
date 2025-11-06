@@ -15,6 +15,9 @@ function BusPassTemplate({ studentData }) {
     address,
     validTill,
     regNo,
+    passNo,
+    busNo,
+    userType,
   } = studentData;
 
   return (
@@ -27,16 +30,32 @@ function BusPassTemplate({ studentData }) {
           </div>
 
           <div className={styles.photoBox}>
-            {photo ? (
-              <img src={photo} alt={`${name || 'Student'} photo`} className={styles.photo} />
-            ) : (
-              <img src="/default-avatar.svg" alt="Default avatar" className={styles.photo} />
-            )}
+            <img 
+              src={photo || '/placeholder-profile.png'} 
+              alt={name || 'Student'} 
+              className={styles.photo}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/placeholder-profile.png';
+              }}
+            />
           </div>
 
           <div className={styles.idBlock}>
             <div className={styles.regLabel}>Reg. No.</div>
             <div className={styles.regValue}>{regNo || '-'}</div>
+          </div>
+
+          <div className={styles.subInfo}>
+            <div className={styles.subInfoItem}>
+              <div className={styles.subInfoLabel}>Pass No</div>
+              <div className={styles.subInfoValue}>{passNo || '-'}</div>
+            </div>
+            <div className={styles.subInfoItem}>
+              <div className={styles.subInfoLabel}>Bus No</div>
+              <div className={styles.subInfoValue}>{busNo || '-'}</div>
+            </div>
+
           </div>
         </div>
 
@@ -69,6 +88,12 @@ function BusPassTemplate({ studentData }) {
               <div className={styles.infoLabel}>Address</div>
               <div className={styles.infoValue}>{address || 'Student address goes here'}</div>
             </div>
+            
+            <div className={styles.infoRow}>
+              <div className={styles.infoLabel}>User Type</div>
+              <div className={styles.infoValue}>{userType === 'staff' ? 'Staff' : 'Student'}</div>
+            </div>
+
           </div>
 
           <div className={styles.footerRow}>
@@ -80,12 +105,27 @@ function BusPassTemplate({ studentData }) {
                   name,
                   branch,
                   year,
-                  validTill
+                  validTill,
+                  status: studentData.status,
+                  passNo,
+                  busNo,
+                  cancelled: studentData.cancelled,
+                  cancelledAt: studentData.cancelled_at,
+                  cancelledBy: studentData.cancelled_by
                 })}
-                size={100}
+                size={140}
                 level="H"
                 includeMargin={true}
+                style={{ 
+                  opacity: studentData.cancelled ? 0.5 : 1,
+                  filter: studentData.cancelled ? 'grayscale(100%)' : 'none'
+                }}
               />
+              {studentData.cancelled && (
+                <div className={styles.cancelledOverlay}>
+                  CANCELLED
+                </div>
+              )}
             </div>
           </div>
         </div>

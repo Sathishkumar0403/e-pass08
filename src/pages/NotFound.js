@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaExclamationTriangle, FaHome } from 'react-icons/fa';
+import { FaHome } from 'react-icons/fa';
 
 function NotFound() {
   return (

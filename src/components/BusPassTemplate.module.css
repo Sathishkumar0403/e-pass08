@@ -55,6 +55,32 @@
 .regLabel{ font-size:11px; opacity:0.9 }
 .regValue{ font-weight:800; font-size:16px }
 
+.subInfo {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 6px;
+}
+
+.subInfoItem {
+  text-align: center;
+}
+
+.subInfoLabel {
+  font-size: 11px;
+  opacity: 0.9;
+  margin-bottom: 2px;
+}
+
+.subInfoValue {
+  font-weight: 600;
+  font-size: 14px;
+}
+
 .rightColumn{
   width:64%;
   padding:18px 22px;
@@ -77,8 +103,8 @@
 .footerRow{ display:flex; justify-content:space-between; align-items:center; margin-top:auto }
 .issuer{ font-size:12px; color:var(--muted) }
 .qrBox { 
-  width: 100px; 
-  height: 100px; 
+  width: 140px; 
+  height: 140px; 
   padding: 8px;
   border-radius: 8px;
   background: #f8fafc;
@@ -86,6 +112,24 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-left: auto;
+  position: relative;
+}
+
+.cancelledOverlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  padding: 5px 20px;
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 1px;
+  z-index: 10;
+  pointer-events: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 /* Responsive / print */

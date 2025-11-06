@@ -2,9 +2,19 @@ const path = require('path');
 
 module.exports = {
   devServer: {
-    allowedHosts: 'all',  // This fixes the allowedHosts warning
-    host: 'localhost',
+    static: {
+      directory: path.join(__dirname, 'public'),
+    },
+    compress: true,
     port: 3000,
+    hot: true,
+    open: true,
+    historyApiFallback: true,
+    allowedHosts: [
+      'localhost',
+      '.localhost',
+      '127.0.0.1'
+    ],
     proxy: {
       '/api': 'http://localhost:3001'
     }

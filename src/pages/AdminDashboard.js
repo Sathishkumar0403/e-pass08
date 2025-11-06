@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaIdCard, FaGraduationCap, FaPhone, FaUserFriends, FaHome, FaBus, FaCalendarAlt, FaImage, FaIdBadge, FaInfoCircle, FaCogs, FaSignOutAlt, FaSpinner, FaTimes, FaEye, FaTrash, FaFileExcel } from 'react-icons/fa';
-import { adminLogin, getApplications, approveApplication, rejectApplication, deleteApplication } from '../utils/api';
+import { getApplications, approveApplication, rejectApplication, deleteApplication, processCancellationRequest } from '../utils/api';
+import { getImageUrl } from '../config';
 import styles from './AdminDashboard.module.css';
 
 function AdminDashboard() {
@@ -56,6 +57,24 @@ function AdminDashboard() {
       await fetchApplications();
     } catch (err) {
       setError(err.message || 'Failed to approve application');
+    }
+  };
+
+  const handleApproveCancellation = async (id) => {
+    try {
+      await processCancellationRequest(id, 'approve', 'admin');
+      await fetchApplications();
+    } catch (err) {
+      setError(err.message || 'Failed to approve cancellation');
+    }
+  };
+
+  const handleRejectCancellation = async (id) => {
+    try {
+      await processCancellationRequest(id, 'reject', 'admin');
+      await fetchApplications();
+    } catch (err) {
+      setError(err.message || 'Failed to reject cancellation');
     }
   };
 
@@ -122,6 +141,7 @@ function AdminDashboard() {
     setSelectedImage(null);
   };
 
+  // Using getImageUrl from config.js
 
 
   return (
@@ -200,11 +220,12 @@ function AdminDashboard() {
                 <th className={styles.tableHeaderCell}><FaBus /> Bus No</th>
                 <th className={styles.tableHeaderCell}><FaInfoCircle /> Status</th>
                 <th className={styles.tableHeaderCell}><FaCogs /> Action</th>
+                <th className={styles.tableHeaderCell}><FaInfoCircle /> Cancellation</th>
               </tr>
             </thead>
             <tbody>
               {filteredApplications.map(app => (
-                <tr key={app.id || app._id} className={`${styles.tableRow} ${app.status === 'approved' ? styles.approved : app.status === 'rejected' ? styles.rejected : ''}`}>
+                <tr key={app.id || app._id} className={`${styles.tableRow} ${app.status === 'approved' ? styles.approved : app.status === 'rejected' ? styles.rejected : app.status === 'cancelled' ? styles.rejected : ''}`}>
                   <td className={styles.tableCell}><FaUser style={{ marginRight: 4, color: '#6366f1' }} />{app.name}</td>
                   <td className={styles.tableCell}><FaIdCard style={{ marginRight: 4, color: '#0ea5e9' }} />{app.regNo}</td>
                   <td className={styles.tableCell}><FaGraduationCap style={{ marginRight: 4, color: '#f59e42' }} />{app.branchYear}</td>
@@ -217,14 +238,18 @@ function AdminDashboard() {
                     {app.photo ? (
                       <div className={styles.imageContainer}>
                         <img 
-                          src={app.photo} 
-                          alt="Photo" 
+                          src={getImageUrl(app.photo)}
+                          alt={`${app.name}'s portrait`} 
                           className={styles.thumbnailImage}
-                          onClick={() => openImageModal(app.photo, `${app.name}'s Photo`)}
+                          onClick={() => openImageModal(getImageUrl(app.photo), `${app.name}'s Photo`)}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/placeholder-profile.png';
+                          }}
                         />
                         <FaEye 
                           className={styles.viewIcon}
-                          onClick={() => openImageModal(app.photo, `${app.name}'s Photo`)}
+                          onClick={() => openImageModal(getImageUrl(`uploads/${app.photo}`), `${app.name}'s Photo`)}
                           title="View full size"
                         />
                       </div>
@@ -235,14 +260,18 @@ function AdminDashboard() {
                     {app.aadharPhoto ? (
                       <div className={styles.imageContainer}>
                         <img 
-                          src={app.aadharPhoto} 
-                          alt="Aadhar" 
+                          src={getImageUrl(app.aadharPhoto)}
+                          alt={`${app.name}'s Aadhar document`} 
                           className={styles.thumbnailImage}
-                          onClick={() => openImageModal(app.aadharPhoto, `${app.name}'s Aadhar Photo`)}
+                          onClick={() => openImageModal(getImageUrl(app.aadharPhoto), `${app.name}'s Aadhar Photo`)}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/placeholder-document.png';
+                          }}
                         />
                         <FaEye 
                           className={styles.viewIcon}
-                          onClick={() => openImageModal(app.aadharPhoto, `${app.name}'s Aadhar Photo`)}
+                          onClick={() => openImageModal(getImageUrl(`uploads/${app.aadharPhoto}`), `${app.name}'s Aadhar Photo`)}
                           title="View full size"
                         />
                       </div>
@@ -252,14 +281,18 @@ function AdminDashboard() {
                     {app.collegeIdPhoto ? (
                       <div className={styles.imageContainer}>
                         <img 
-                          src={app.collegeIdPhoto} 
-                          alt="College ID" 
+                          src={getImageUrl(app.collegeIdPhoto)}
+                          alt={`${app.name}'s college ID`} 
                           className={styles.thumbnailImage}
-                          onClick={() => openImageModal(app.collegeIdPhoto, `${app.name}'s College ID Photo`)}
+                          onClick={() => openImageModal(getImageUrl(app.collegeIdPhoto), `${app.name}'s College ID Photo`)}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/placeholder-document.png';
+                          }}
                         />
                         <FaEye 
                           className={styles.viewIcon}
-                          onClick={() => openImageModal(app.collegeIdPhoto, `${app.name}'s College ID Photo`)}
+                          onClick={() => openImageModal(getImageUrl(`uploads/${app.collegeIdPhoto}`), `${app.name}'s College ID Photo`)}
                           title="View full size"
                         />
                       </div>
@@ -269,14 +302,14 @@ function AdminDashboard() {
                     {app.feesBillPhoto ? (
                       <div className={styles.imageContainer}>
                         <img 
-                          src={app.feesBillPhoto} 
-                          alt="Fees Bill" 
+                          src={getImageUrl(app.feesBillPhoto)} 
+                          alt={`${app.name}'s fees bill`} 
                           className={styles.thumbnailImage}
-                          onClick={() => openImageModal(app.feesBillPhoto, `${app.name}'s Fees Bill`)}
+                          onClick={() => openImageModal(getImageUrl(app.feesBillPhoto), `${app.name}'s Fees Bill`)}
                         />
                         <FaEye 
                           className={styles.viewIcon}
-                          onClick={() => openImageModal(app.feesBillPhoto, `${app.name}'s Fees Bill`)}
+                          onClick={() => openImageModal(getImageUrl(app.feesBillPhoto), `${app.name}'s Fees Bill`)}
                           title="View full size"
                         />
                       </div>
@@ -298,6 +331,8 @@ function AdminDashboard() {
                         </>
                       ) : app.status === 'approved' ? (
                         <span className={`${styles.statusBadge} ${styles.approved}`}>Approved</span>
+                      ) : app.status === 'cancelled' ? (
+                        <span className={`${styles.statusBadge} ${styles.rejected}`}>Cancelled</span>
                       ) : (
                         <span className={`${styles.statusBadge} ${styles.rejected}`}>Rejected</span>
                       )}
@@ -309,6 +344,19 @@ function AdminDashboard() {
                         <FaTrash />
                       </button>
                     </div>
+                  </td>
+                  <td className={styles.tableCell}>
+                    {app.cancelled ? (
+                      <span className={`${styles.statusBadge} ${styles.rejected}`}>Pass Cancelled</span>
+                    ) : app.cancellation_requested ? (
+                      <div className={styles.actionButtons}>
+                        <span className={styles.statusBadge}>Pending</span>
+                        <button onClick={() => handleApproveCancellation(app.id)} className={`${styles.actionButton} ${styles.rejectButton}`}>Approve Cancellation</button>
+                        <button onClick={() => handleRejectCancellation(app.id)} className={`${styles.actionButton}`}>Reject Cancellation</button>
+                      </div>
+                    ) : (
+                      <span>-</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -335,7 +383,7 @@ function AdminDashboard() {
             </div>
             <div className={styles.modalBody}>
               <img
-                src={selectedImage.url}
+                src={getImageUrl(selectedImage?.url)}
                 alt={selectedImage.title}
                 className={styles.modalImage}
               />

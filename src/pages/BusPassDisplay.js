@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import BusPassTemplate from '../components/BusPassTemplate';
 import { FaArrowLeft, FaPrint, FaShare, FaDownload } from 'react-icons/fa';
-import { motion } from 'framer-motion';
 import { downloadBusPass } from '../utils/downloadPass';
 
 function BusPassDisplay() {
@@ -13,24 +12,7 @@ function BusPassDisplay() {
   const [error, setError] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  useEffect(() => {
-    // Check if data is passed via location state (from QR scan)
-    if (location.state && location.state.studentData) {
-      setStudentData(location.state.studentData);
-      setLoading(false);
-      return;
-    }
-
-    // If no data in state, try to fetch from API using regNo
-    if (regNo) {
-      fetchStudentData();
-    } else {
-      setError('No student data provided');
-      setLoading(false);
-    }
-  }, [regNo, location.state]);
-
-  const fetchStudentData = async () => {
+  const fetchStudentData = useCallback(async () => {
     try {
       const response = await fetch(`/api/student/pass/${regNo}`);
       if (!response.ok) {
@@ -60,7 +42,26 @@ function BusPassDisplay() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [regNo]);
+
+  useEffect(() => {
+    // Check if data is passed via location state (from QR scan)
+    if (location.state && location.state.studentData) {
+      setStudentData(location.state.studentData);
+      setLoading(false);
+      return;
+    }
+
+    // If no data in state, try to fetch from API using regNo
+    if (regNo) {
+      fetchStudentData();
+    } else {
+      setError('No student data provided');
+      setLoading(false);
+    }
+  }, [regNo, location.state, fetchStudentData]);
+
+
 
   const handlePrint = () => {
     window.print();

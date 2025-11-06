@@ -43,7 +43,7 @@
 .heroText {
   color: var(--text-white);
   animation: fadeInUp 0.8s ease-out;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 2px 4px rgb(255, 255, 255);
 }
 
 .heroTitle {
@@ -53,23 +53,23 @@
   color: var(--text-white);
   margin-bottom: 1.5rem;
   margin-bottom: 1.5rem;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 4px 8px rgb(251, 248, 248);
 }
 .heroTitlesubtitle {
   display: block;
   color: rgb(245, 19, 19);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 2px 4px rgb(255, 252, 252);
 }
 
 .heroTitleMain {
   display: block;
-  color: rgb(21, 20, 20);
+  color: rgb(0, 0, 0);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .heroTitleSub {
   display: block;
-  color: rgb(18, 17, 17);
+  color: rgb(0, 0, 0);
   font-size: 0.7em;
   margin-top: 0.5rem;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -424,7 +424,7 @@
 /* CTA Section */
 .ctaSection {
   padding: 6rem 1rem;
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #3283ee 0%, #54bbef 100%);
   color: white;
   text-align: center;
 }

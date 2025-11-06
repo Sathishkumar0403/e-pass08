@@ -50,14 +50,30 @@ const __dirname = path.dirname(__filename);
     `);
 
     // Add new column for fees bill photo, ignore error if it already exists
-    try {
-      await db.exec('ALTER TABLE student_applications ADD COLUMN feesBillPhoto TEXT');
-      console.log('➕ Added feesBillPhoto column to student_applications table.');
-    } catch (err) {
-      if (!err.message.includes('duplicate column name')) {
-        throw err;
+    const columnsToAdd = [
+      { name: 'feesBillPhoto', type: 'TEXT' },
+      { name: 'cancellation_requested', type: 'BOOLEAN DEFAULT 0' },
+      { name: 'cancelled', type: 'BOOLEAN DEFAULT 0' },
+      { name: 'cancellation_reason', type: 'TEXT' },
+      { name: 'cancelled_at', type: 'DATETIME' },
+      { name: 'cancelled_by', type: 'TEXT' },
+      { name: 'college', type: 'TEXT' }, // NEW
+      { name: 'busNo', type: 'TEXT' },   // NEW
+      { name: 'userType', type: 'TEXT' },// NEW (student/staff)
+      { name: 'passNo', type: 'TEXT' } // CHANGED FROM TEXT UNIQUE to TEXT
+    ];
+
+    for (const column of columnsToAdd) {
+      try {
+        await db.exec(`ALTER TABLE student_applications ADD COLUMN ${column.name} ${column.type}`);
+        console.log(`➕ Added ${column.name} column to student_applications table.`);
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) {
+          console.error(`❌ Error adding column ${column.name}:`, err);
+          throw err;
+        }
+        // Column already exists, which is fine
       }
-      // Column already exists, which is fine
     }
 
     console.log('✅ Database initialized successfully!');

@@ -6,6 +6,7 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import net from 'net';
 import studentRoutes from './routes/student.js';
 import adminRoutes from './routes/admin.js';
 import fs from 'fs';
@@ -15,33 +16,38 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Middleware
+// CORS configuration
 const corsOptions = {
-  origin: 'http://localhost:3000',
-  optionsSuccessStatus: 200,
+  origin: function (origin, callback) {
+    callback(null, true); // Allow all origins in development
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
   exposedHeaders: ['Content-Disposition'],
+  credentials: true,
+  optionsSuccessStatus: 200
 };
+
+// Enable CORS
 app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded files
-const uploadsPath = path.join(__dirname, 'routes', 'uploads');
-if (!fs.existsSync(uploadsPath)) {
-  fs.mkdirSync(uploadsPath, { recursive: true });
-}
-app.use('/uploads', express.static(uploadsPath));
-
 // SQLite DB setup
-const dbPromise = open({
+let dbPromise = open({
   filename: path.join(__dirname, 'buspass.sqlite'),
   driver: sqlite3.Database
 });
 
-// Ensure DB schema exists and add any missing columns for backward compatibility
-async function ensureSchema() {
-  const db = await dbPromise;
-  // Create table if it doesn't exist
+// Helper to detect corruption
+function isSqliteCorruptionError(error) {
+  if (!error) return false;
+  const message = String(error.message || '').toLowerCase();
+  return error.code === 'SQLITE_CORRUPT' || message.includes('database disk image is malformed');
+}
+
+async function initializeSchema(db) {
+  // Create table if it doesn't exist (full definition for fresh DBs)
   await db.exec(`
     CREATE TABLE IF NOT EXISTS student_applications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,6 +66,13 @@ async function ensureSchema() {
       collegeIdPhoto TEXT,
       status TEXT DEFAULT 'pending',
       qrData TEXT,
+      feesBillPhoto TEXT,
+      cancellation_requested BOOLEAN DEFAULT 0,
+      cancelled BOOLEAN DEFAULT 0,
+      cancellation_reason TEXT,
+      cancellation_requested_at DATETIME,
+      cancelled_at DATETIME,
+      cancelled_by TEXT,
       passNumber TEXT,
       busNumber TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -71,7 +84,7 @@ async function ensureSchema() {
   const rows = await db.all("PRAGMA table_info('student_applications')");
   const existingColumns = new Set(rows.map(r => r.name));
 
-  // Columns we expect to exist
+  // Columns we expect to exist (for migrations on older DBs)
   const expectedColumns = [
     { name: 'photo', sql: "ALTER TABLE student_applications ADD COLUMN photo TEXT" },
     { name: 'aadharNumber', sql: "ALTER TABLE student_applications ADD COLUMN aadharNumber TEXT" },
@@ -81,8 +94,15 @@ async function ensureSchema() {
     { name: 'qrData', sql: "ALTER TABLE student_applications ADD COLUMN qrData TEXT" },
     { name: 'passNumber', sql: "ALTER TABLE student_applications ADD COLUMN passNumber TEXT" },
     { name: 'busNumber', sql: "ALTER TABLE student_applications ADD COLUMN busNumber TEXT" },
-  { name: 'createdAt', sql: "ALTER TABLE student_applications ADD COLUMN createdAt DATETIME" },
-  { name: 'updatedAt', sql: "ALTER TABLE student_applications ADD COLUMN updatedAt DATETIME" }
+    { name: 'createdAt', sql: "ALTER TABLE student_applications ADD COLUMN createdAt DATETIME" },
+    { name: 'updatedAt', sql: "ALTER TABLE student_applications ADD COLUMN updatedAt DATETIME" },
+    { name: 'feesBillPhoto', sql: "ALTER TABLE student_applications ADD COLUMN feesBillPhoto TEXT" },
+    { name: 'cancellation_requested', sql: "ALTER TABLE student_applications ADD COLUMN cancellation_requested BOOLEAN DEFAULT 0" },
+    { name: 'cancelled', sql: "ALTER TABLE student_applications ADD COLUMN cancelled BOOLEAN DEFAULT 0" },
+    { name: 'cancellation_reason', sql: "ALTER TABLE student_applications ADD COLUMN cancellation_reason TEXT" },
+    { name: 'cancellation_requested_at', sql: "ALTER TABLE student_applications ADD COLUMN cancellation_requested_at DATETIME" },
+    { name: 'cancelled_at', sql: "ALTER TABLE student_applications ADD COLUMN cancelled_at DATETIME" },
+    { name: 'cancelled_by', sql: "ALTER TABLE student_applications ADD COLUMN cancelled_by TEXT" }
   ];
 
   for (const { name, sql } of expectedColumns) {
@@ -91,7 +111,7 @@ async function ensureSchema() {
     }
   }
 
-  // Backfill defaults in a SQLite-safe way (no non-constant defaults in ALTER)
+  // Backfill defaults
   await db.exec(`
     UPDATE student_applications SET status = 'pending' WHERE status IS NULL OR status = '';
     UPDATE student_applications SET createdAt = COALESCE(createdAt, CURRENT_TIMESTAMP);
@@ -104,6 +124,46 @@ async function ensureSchema() {
     CREATE INDEX IF NOT EXISTS idx_status ON student_applications(status);
     CREATE INDEX IF NOT EXISTS idx_created_at ON student_applications(createdAt);
   `);
+}
+
+// Ensure DB schema exists and add any missing columns for backward compatibility
+async function ensureSchema() {
+  const db = await dbPromise;
+  try {
+    await initializeSchema(db);
+  } catch (err) {
+    if (!isSqliteCorruptionError(err)) throw err;
+
+    console.error('Detected SQLite corruption. Backing up and recreating database...');
+    try {
+      // Best-effort close
+      try { 
+        await db.close(); 
+      } catch (_) {
+        // Ignore close errors
+      }
+
+      const dbPath = path.join(__dirname, 'buspass.sqlite');
+      const backupPath = `${dbPath}.bak-${Date.now()}`;
+      
+      try {
+        fs.accessSync(dbPath, fs.constants.F_OK);
+        fs.renameSync(dbPath, backupPath);
+        console.error(`Corrupt DB moved to: ${backupPath}`);
+      } catch (err) {
+        // File doesn't exist, continue with creating new DB
+        console.log('No existing database file found');
+      }
+
+      const newDb = await open({ filename: dbPath, driver: sqlite3.Database });
+      await initializeSchema(newDb);
+      dbPromise = Promise.resolve(newDb);
+      console.log('✅ Recreated fresh SQLite database and schema.');
+    } catch (recreateErr) {
+      console.error('Failed to recreate SQLite database:', recreateErr);
+      throw recreateErr;
+    }
+  }
 }
 
 // Run schema check at startup
@@ -136,7 +196,7 @@ app.get('/', (req, res) => {
 });
 
 // Serve uploaded images statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Serve images with fallback
 app.get('/uploads/:filename', (req, res) => {
@@ -144,7 +204,9 @@ app.get('/uploads/:filename', (req, res) => {
   const imagePath = path.join(__dirname, 'uploads', filename);
   
   // Check if file exists
-  if (!fs.existsSync(imagePath)) {
+  try {
+    fs.accessSync(imagePath, fs.constants.F_OK);
+  } catch (err) {
     return res.status(404).json({ error: 'Image not found' });
   }
   
@@ -182,11 +244,18 @@ function findAvailablePort(startPort = 3001) {
   });
 }
 
-// Start server on fixed port (fail fast if taken)
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📁 Database: ${path.join(__dirname, 'buspass.sqlite')}`);
-  console.log(`🌐 API Base: http://localhost:${PORT}/api`);
-  console.log(`📝 Update frontend API_BASE to: http://localhost:${PORT}/api`);
-});
+// Start server, automatically finding an available port if default is taken
+const DEFAULT_PORT = Number(process.env.PORT) || 3001;
+findAvailablePort(DEFAULT_PORT)
+  .then((port) => {
+    app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+      console.log(`📁 Database: ${path.join(__dirname, 'buspass.sqlite')}`);
+      console.log(`🌐 API Base: http://localhost:${port}/api`);
+      console.log(`📝 Update frontend API_BASE to: http://localhost:${port}/api`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });

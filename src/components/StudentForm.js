@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { FaUser, FaCalendarAlt, FaIdCard, FaGraduationCap, FaPhone, FaUserFriends, FaHome, FaBus, FaImage, FaIdBadge } from 'react-icons/fa';
+import { FaUser, FaCalendarAlt, FaIdCard, FaGraduationCap, FaPhone, FaUserFriends, FaHome, FaBus, FaImage, FaIdBadge, FaUserGraduate } from 'react-icons/fa';
 import styles from './StudentForm.module.css';
 import { applyStudent } from '../utils/api';
 
 function StudentForm() {
   const [form, setForm] = useState({
-    name: '', dob: '', regNo: '', branchYear: '', mobile: '', parentMobile: '', address: '', route: '', validity: '', photo: null, aadharNumber: '', aadharPhoto: null, collegeIdPhoto: null,
+    name: '', dob: '', regNo: '', branchYear: '', mobile: '', parentMobile: '', address: '', route: '', validity: '', photo: null, aadharNumber: '', aadharPhoto: null, collegeIdPhoto: null, college: '', busNo: '', userType: 'student',
   });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -14,12 +14,13 @@ function StudentForm() {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === 'photo' || name === 'aadharPhoto' || name === 'collegeIdPhoto') {
-      // Check if files exist and have at least one file
       if (files && files.length > 0) {
         setForm({ ...form, [name]: files[0] });
       } else {
         setForm({ ...form, [name]: null });
       }
+    } else if (name === 'userType') {
+      setForm({ ...form, userType: value });
     } else {
       setForm({ ...form, [name]: value });
     }
@@ -45,7 +46,7 @@ function StudentForm() {
     setIsSubmitting(true);
     
     // Validate required text fields
-    if (!form.name || !form.dob || !form.regNo || !form.branchYear || !form.mobile || !form.parentMobile || !form.address || !form.route || !form.validity || !form.aadharNumber) {
+    if (!form.name || !form.dob || !form.regNo || !form.branchYear || !form.mobile || !form.parentMobile || !form.address || !form.route || !form.validity || !form.aadharNumber || !form.college || !form.busNo || !form.userType) {
       setError('Please fill in all required fields');
       setIsSubmitting(false);
       return;
@@ -73,7 +74,7 @@ function StudentForm() {
       
       if (res.message === 'Application submitted successfully') {
         setMessage('Application submitted successfully!');
-        setForm({ name: '', dob: '', regNo: '', branchYear: '', mobile: '', parentMobile: '', address: '', route: '', validity: '', photo: null, aadharNumber: '', aadharPhoto: null, collegeIdPhoto: null });
+        setForm({ name: '', dob: '', regNo: '', branchYear: '', mobile: '', parentMobile: '', address: '', route: '', validity: '', photo: null, aadharNumber: '', aadharPhoto: null, collegeIdPhoto: null, college: '', busNo: '', userType: 'student' });
         // Clear file inputs
         Object.keys(fileInputs).forEach(key => {
           if (fileInputs[key]) fileInputs[key].value = '';
@@ -131,13 +132,13 @@ function StudentForm() {
         />
       </div>
        <div className={styles.fieldGroup}>
-        <label htmlFor="College" className={styles.label}><FaUser style={{ marginRight: 6, color: '#6366f1' }} />college name</label>
+        <label htmlFor="college" className={styles.label}><FaUser style={{ marginRight: 6, color: '#6366f1' }} />College Name</label>
         <input
           type="text"
           id="college"
           name="college"
           placeholder="Enter your college name"
-          value={form.College}
+          value={form.college}
           onChange={handleChange}
           required
           className={styles.input}
@@ -219,6 +220,37 @@ function StudentForm() {
           required
           className={styles.input}
         />
+      </div>
+      <div className={styles.fieldGroup}>
+        <label htmlFor="busNo" className={styles.label}><FaBus style={{ marginRight: 6, color: '#fbbf24' }} />Bus Number</label>
+        <select
+          id="busNo"
+          name="busNo"
+          value={form.busNo}
+          onChange={handleChange}
+          required
+          className={styles.input}
+        >
+          <option value="">Select a bus number</option>
+          <option value="101">101</option>
+          <option value="102">102</option>
+          <option value="103">103</option>
+          <option value="104">104</option>
+        </select>
+      </div>
+      <div className={styles.fieldGroup}>
+        <label htmlFor="userType" className={styles.label}><FaUserGraduate style={{ marginRight: 6, color: '#6366f1' }} />Application Type</label>
+        <select
+          id="userType"
+          name="userType"
+          value={form.userType}
+          onChange={handleChange}
+          required
+          className={styles.input}
+        >
+          <option value="student">Student</option>
+          <option value="staff">Staff</option>
+        </select>
       </div>
       <div className={styles.fieldGroup}>
         <label htmlFor="photo" className={styles.label}><FaImage style={{ marginRight: 6, color: '#6366f1' }} />Upload Photo</label>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBus, FaClipboardList, FaShieldAlt, FaQrcode, FaMobile, FaCheckCircle, FaArrowRight, FaClock, FaUsers, FaGlobe } from 'react-icons/fa';
+import { FaBus, FaShieldAlt, FaQrcode, FaMobile, FaArrowRight, FaClock } from 'react-icons/fa';
 import styles from './Home.module.css';
 
 function Home() {

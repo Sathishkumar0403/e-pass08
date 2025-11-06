@@ -5,6 +5,12 @@ import fs from 'fs';
 import ExcelJS from 'exceljs';
 const router = express.Router();
 
+// Middleware to check if user is admin (simplified for demo)
+const isAdmin = (req, res, next) => {
+  // In a real app, verify JWT token or session
+  next();
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -248,6 +254,99 @@ router.get('/export-excel', async (req, res) => {
   } catch (err) {
     console.error('Error exporting to Excel:', err);
     res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+// =============================
+// Cancellation Requests (Admin)
+// =============================
+router.get('/cancellation-requests', async (req, res) => {
+  try {
+    const db = req.db;
+    const requests = await db.all(`
+      SELECT 
+        id,
+        name,
+        regNo,
+        route,
+        validity,
+        status,
+        cancellation_requested as cancellationRequested,
+        cancellation_reason as cancellationReason,
+        cancellation_requested_at as cancellationRequestedAt,
+        cancelled as isCancelled,
+        cancelled_at as cancelledAt,
+        cancelled_by as cancelledBy
+      FROM student_applications
+      WHERE cancellation_requested = 1 AND (cancelled IS NULL OR cancelled = 0)
+      ORDER BY cancellation_requested_at DESC NULLS LAST, id DESC
+    `);
+
+    res.json(requests);
+  } catch (err) {
+    console.error('Error fetching cancellation requests:', err);
+    res.status(500).json({ error: 'Failed to fetch cancellation requests' });
+  }
+});
+
+router.post('/process-cancellation/:id', async (req, res) => {
+  let db;
+  try {
+    db = req.db;
+    const { id } = req.params;
+    const { action, adminUsername } = req.body || {};
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: 'Valid application ID is required' });
+    }
+    if (!action || !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be "approve" or "reject"' });
+    }
+
+    const app = await db.get('SELECT * FROM student_applications WHERE id = ?', [id]);
+    if (!app) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    if (!app.cancellation_requested) {
+      return res.status(400).json({ error: 'No pending cancellation request for this application' });
+    }
+
+    await db.run('BEGIN IMMEDIATE');
+
+    if (action === 'approve') {
+      await db.run(
+        `UPDATE student_applications SET 
+           cancelled = 1,
+           cancelled_at = CURRENT_TIMESTAMP,
+           cancelled_by = ?,
+           cancellation_requested = 0,
+           updatedAt = CURRENT_TIMESTAMP,
+           status = 'cancelled'
+         WHERE id = ?`,
+        [adminUsername || 'admin', id]
+      );
+    } else {
+      // reject: simply clear the request flags
+      await db.run(
+        `UPDATE student_applications SET 
+           cancellation_requested = 0,
+           updatedAt = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [id]
+      );
+    }
+
+    await db.run('COMMIT');
+
+    res.json({ 
+      message: action === 'approve' ? 'Cancellation approved' : 'Cancellation rejected',
+      id: Number(id),
+      action
+    });
+  } catch (err) {
+    try { if (db) await db.run('ROLLBACK'); } catch {}
+    console.error('Error processing cancellation request:', err);
+    res.status(500).json({ error: 'Failed to process cancellation request' });
   }
 });
 

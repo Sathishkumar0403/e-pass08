@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { FaUserGraduate, FaIdCard, FaCalendarAlt, FaSignInAlt, FaQrcode, FaInfoCircle, FaDownload } from 'react-icons/fa';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FaUserGraduate, FaIdCard, FaCalendarAlt, FaSignInAlt, FaInfoCircle, FaDownload, FaTimesCircle, FaSpinner } from 'react-icons/fa';
 import styles from './StudentDashboard.module.css';
-import { studentLogin, uploadFeesBill } from '../utils/api';
+import { studentLogin, uploadFeesBill, requestPassCancellation, checkCancellationStatus } from '../utils/api';
 import { QRCodeCanvas } from 'qrcode.react';
 import BusPassTemplate from '../components/BusPassTemplate';
 import { downloadBusPass } from '../utils/downloadPass';
@@ -12,21 +12,63 @@ function StudentDashboard() {
   const [error, setError] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [cancellationStatus, setCancellationStatus] = useState({
+    cancellationRequested: false,
+    cancellationReason: '',
+    isCancelled: false
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+
+  const checkStatus = useCallback(async () => {
+    if (!studentData?.regNo) return;
+    
+    try {
+      console.log('Checking cancellation status for:', studentData.regNo);
+      const status = await checkCancellationStatus(studentData.regNo);
+      console.log('Cancellation status:', status);
+      setCancellationStatus({
+        cancellationRequested: status.cancellationRequested,
+        cancellationReason: status.cancellationReason,
+        isCancelled: status.isCancelled
+      });
+    } catch (err) {
+      console.error('Error checking cancellation status:', {
+        message: err.message,
+        status: err.status,
+        data: err.data,
+        stack: err.stack
+      });
+    }
+  }, [studentData?.regNo]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const response = await studentLogin(form.regNo, form.dob);
-    if (response.error) {
-      setError(response.error);
-      setStudentData(null);
-    } else {
-      setStudentData(response);
-      setError('');
+    setIsLoading(true);
+    try {
+      const response = await studentLogin(form.regNo, form.dob);
+      if (response.error) {
+        setError(response.error);
+        setStudentData(null);
+      } else {
+        setStudentData(response);
+        setError('');
+      }
+    } catch (err) {
+      setError('Failed to login. Please try again.');
+      console.error('Login error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,11 +96,82 @@ function StudentDashboard() {
 
     try {
       setError('');
-      // Add a state for loading
+      setIsLoading(true);
       const response = await uploadFeesBill(studentData.regNo, selectedFile);
-      alert(response.message); // Or use a more sophisticated notification
+      alert(response.message);
     } catch (error) {
       setError(error.message || 'An error occurred during file upload.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelPass = async () => {
+    if (!cancelReason.trim()) {
+      setError('Please provide a reason for cancellation.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      console.log('Submitting cancellation request:', {
+        regNo: studentData.regNo,
+        reason: cancelReason
+      });
+      
+      const response = await requestPassCancellation(studentData.regNo, cancelReason);
+      console.log('Cancellation response:', response);
+      
+      if (response.error) {
+        setError(`Error: ${response.error}`);
+        return;
+      }
+      
+      // Update UI on success
+      setCancellationStatus(prev => ({
+        ...prev,
+        cancellationRequested: true,
+        cancellationReason: cancelReason,
+        isCancelled: false
+      }));
+      
+      setShowCancelModal(false);
+      setCancelReason('');
+      
+      // Show success message
+      alert('Your cancellation request has been submitted for admin approval.');
+      
+      // Refresh status after a short delay
+      setTimeout(checkStatus, 1000);
+      
+    } catch (err) {
+      console.error('Cancellation error details:', {
+        message: err.message,
+        status: err.status,
+        data: err.data,
+        stack: err.stack
+      });
+      
+      // More user-friendly error messages
+      let errorMessage = 'Failed to submit cancellation request. ';
+      
+      if (err.status === 400) {
+        errorMessage = err.data?.error || 'Invalid request. Please check your input.';
+      } else if (err.status === 404) {
+        errorMessage = 'Student record not found. Please contact support.';
+      } else if (err.status === 500) {
+        errorMessage = 'Server error. Please try again later or contact support.';
+      } else if (err.name === 'AbortError') {
+        errorMessage = 'Request timed out. Please check your connection and try again.';
+      } else {
+        errorMessage += err.message || 'Please try again.';
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -105,12 +218,35 @@ function StudentDashboard() {
               <div className={styles.headerActions}>
                 <button
                   onClick={handleDownload}
-                  disabled={isDownloading}
-                  className={styles.downloadBtn}
+                  disabled={isDownloading || cancellationStatus.cancelled}
+                  className={`${styles.downloadBtn} ${cancellationStatus.cancelled ? styles.disabledBtn : ''}`}
+                  title={cancellationStatus.cancelled ? 'Pass is cancelled' : ''}
                 >
                   <FaDownload style={{ marginRight: 6 }} />
                   {isDownloading ? 'Downloading...' : 'Download JPEG'}
                 </button>
+                {!cancellationStatus.cancelled && !cancellationStatus.cancellationRequested && (
+                  <button 
+                    onClick={() => setShowCancelModal(true)}
+                    className={`${styles.cancelBtn} ${styles.buttonInline}`}
+                    disabled={isLoading}
+                  >
+                    <FaTimesCircle style={{ marginRight: 6 }} />
+                    Request Cancellation
+                  </button>
+                )}
+                {cancellationStatus.cancellationRequested && (
+                  <div className={styles.statusBadge}>
+                    <FaInfoCircle style={{ marginRight: 6 }} />
+                    Cancellation Pending
+                  </div>
+                )}
+                {cancellationStatus.cancelled && (
+                  <div className={`${styles.statusBadge} ${styles.cancelledBadge}`}>
+                    <FaTimesCircle style={{ marginRight: 6 }} />
+                    Pass Cancelled
+                  </div>
+                )}
                 <div className={styles.uploadSectionInline}>
                   <input
                     type="file"
@@ -118,8 +254,15 @@ function StudentDashboard() {
                     name="feesBill"
                     onChange={handleFileChange}
                     className={styles.inputInline}
+                    disabled={cancellationStatus.cancelled}
                   />
-                  <button onClick={handleFileUpload} className={styles.buttonInline}>Upload Fees Bill</button>
+                  <button 
+                    onClick={handleFileUpload} 
+                    className={styles.buttonInline}
+                    disabled={isLoading || cancellationStatus.cancelled}
+                  >
+                    {isLoading ? <FaSpinner className="fa-spin" /> : 'Upload Fees Bill'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -135,6 +278,9 @@ function StudentDashboard() {
                   branch: studentData.branch || studentData.course || 'Branch',
                   year: studentData.year || studentData.branchYear || 'Year',
                   college: studentData.college || 'Your College Name',
+                  busNo: studentData.busNo || '-',
+                  userType: studentData.userType || 'student',
+                  passNo: studentData.passNo || '-',
                   address: studentData.address || studentData.collegeAddress || 'College Address',
                   validTill: studentData.validity || studentData.validTill || 'N/A',
                 };
@@ -170,6 +316,51 @@ function StudentDashboard() {
 
         {/* The upload section has been moved inline with the header actions */}
       </div>
+      
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Request Pass Cancellation</h3>
+            <p>Please provide a reason for cancelling your bus pass:</p>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className={styles.cancelReasonInput}
+              rows={4}
+              placeholder="Enter your reason for cancellation..."
+            />
+            {error && <div className={styles.errorText}>{error}</div>}
+            <div className={styles.modalActions}>
+              <button 
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelReason('');
+                  setError('');
+                }}
+                className={styles.secondaryButton}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleCancelPass}
+                className={styles.primaryButton}
+                disabled={isLoading || !cancelReason.trim()}
+              >
+                {isLoading ? (
+                  <>
+                    <FaSpinner className="fa-spin" style={{ marginRight: '8px' }} />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Request'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

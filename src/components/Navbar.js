@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaHome, FaUserGraduate, FaUserShield, FaBars, FaTimes, FaBus } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 import styles from './Navbar.module.css';
