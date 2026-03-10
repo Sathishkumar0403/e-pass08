@@ -1,5 +1,6 @@
-// Helper function for API calls with timeout
 import { API_BASE_URL, FALLBACK_API_URLS } from '../config';
+
+// Helper function for API calls with timeout
 
 export async function apiCall(endpoint, options = {}) {
   const API_URLS = [API_BASE_URL, ...FALLBACK_API_URLS].filter((url, index, self) =>
