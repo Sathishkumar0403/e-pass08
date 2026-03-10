@@ -6,13 +6,17 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+// Try loading .env but don't fail if it's missing (it will be missing on Vercel)
+try {
+  dotenv.config({ path: path.join(__dirname, '..', '.env') });
+} catch (e) {
+  // Silent fail
+}
 
 const uri = process.env.MONGODB_URI;
 
 if (!uri) {
-  console.error("MONGODB_URI is not defined in .env");
-  process.exit(1);
+  console.warn("WARNING: MONGODB_URI is not defined.");
 }
 
 const client = new MongoClient(uri, {

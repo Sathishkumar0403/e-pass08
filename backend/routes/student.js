@@ -181,7 +181,8 @@ router.get("/pass/:regNo", async (req, res) => {
 // Application & Login
 // =============================
 
-const uploadDir = path.join(process.cwd(), 'uploads');
+// Use /tmp for uploads on Vercel as it's the only writable region
+const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
