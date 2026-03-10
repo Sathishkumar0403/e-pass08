@@ -16,11 +16,10 @@ const BACKEND_BASE = (() => {
 // API configuration
 export const API_BASE_URL = `${BACKEND_BASE}/api`;
 
-// Backup API URLs if main one fails
-export const FALLBACK_API_URLS = [
-  'http://localhost:3001/api',
-  'http://127.0.0.1:3001/api'
-];
+// Backup API URLs if main one fails (only in development)
+export const FALLBACK_API_URLS = process.env.NODE_ENV === 'development' 
+  ? ['http://localhost:3001/api', 'http://127.0.0.1:3001/api']
+  : [];
 
 // Image URL helper
 export const getImageUrl = (path) => {

@@ -38,8 +38,14 @@ const corsOptions = {
 
 // Enable CORS
 app.use(cors(corsOptions));
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Basic request logger
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 let mongodb = null;
 
@@ -78,6 +84,20 @@ if (process.env.NODE_ENV !== 'production') {
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+
+app.get('/api/health', async (req, res) => {
+  try {
+    const dbStatus = req.mongo ? 'Connected' : 'Disconnected';
+    res.json({ 
+      status: 'OK', 
+      db: dbStatus, 
+      env: process.env.NODE_ENV,
+      vercel: !!process.env.VERCEL
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'Error', error: err.message });
+  }
+});
 
 // Serve uploaded images statically
 const backendUploads = path.join(__dirname, 'uploads');

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
   "dependencies": {
     "@headlessui/react": "^2.2.6",
     "@heroicons/react": "^2.2.0",
@@ -32,8 +35,6 @@
     "react-icons": "^5.5.0",
     "react-router-dom": "^6.14.1",
     "react-scripts": "5.0.1",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "twilio": "^5.12.2",
     "web-vitals": "^2.1.4"
   },
