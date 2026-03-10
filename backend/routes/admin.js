@@ -3,350 +3,499 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import ExcelJS from 'exceljs';
+import { ObjectId } from 'mongodb';
+
 const router = express.Router();
-
-// Middleware to check if user is admin (simplified for demo)
-const isAdmin = (req, res, next) => {
-  // In a real app, verify JWT token or session
-  next();
-};
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Dummy admin login (replace with real auth in production)
-router.post('/login', (req, res) => {
+// Admin/Staff login route
+router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    
-    // Validate input
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
-    }
-    
-  // Use a strong password for admin
-  const ADMIN_USERNAME = 'admin';
-  const ADMIN_PASSWORD = 'Admin@demo';
-    
+    if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
+
+    // 1. Check hardcoded Admin
+    const ADMIN_USERNAME = 'admin';
+    const ADMIN_PASSWORD = 'Admin@demo';
+
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      res.json({ 
+      return res.json({
         message: 'Login successful',
-        user: { username: ADMIN_USERNAME, role: 'admin' }
+        token: 'admin-hardcoded-token',
+        user: { id: 0, username: ADMIN_USERNAME, role: 'admin', name: 'System Administrator' }
+      });
+    }
+
+    // 2. Check Database
+    const user = await req.mongo.collection("admin_users").findOne({ username, password });
+
+    if (user) {
+      res.json({
+        message: 'Login successful',
+        token: 'staff-db-token',
+        user: {
+          id: user._id.toString(),
+          username: user.username,
+          role: user.role,
+          department: user.department,
+          name: user.name
+        }
       });
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
     }
   } catch (error) {
-    console.error('Admin login error:', error);
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-  // Get all student applications
+// Get all student applications
 router.get('/applications', async (req, res) => {
   try {
-    const db = req.db;
-    const apps = await db.all('SELECT * FROM student_applications ORDER BY id DESC');
-    
-    // Add full URLs to image paths
-    const baseUrl = `http://localhost:${process.env.PORT || 3001}`;
+    const { role, department } = req.query;
+    let query = {};
+    if (role === 'hod' && department) query.branchYear = { $regex: new RegExp(`^${department}`, 'i') };
+
+    const apps = await req.mongo.collection("student_applications").find(query).sort({ _id: -1 }).toArray();
+
     const appsWithUrls = apps.map(app => ({
       ...app,
-      photo: app.photo ? `${baseUrl}${app.photo}` : null,
-      aadharPhoto: app.aadharPhoto ? `${baseUrl}${app.aadharPhoto}` : null,
-      collegeIdPhoto: app.collegeIdPhoto ? `${baseUrl}${app.collegeIdPhoto}` : null,
-      feesBillPhoto: app.feesBillPhoto ? `${baseUrl}${app.feesBillPhoto}` : null
+      id: app._id.toString()
     }));
-    
+
     res.json(appsWithUrls);
   } catch (err) {
     console.error('Error fetching applications:', err);
     res.status(500).json({ error: 'Failed to fetch applications' });
   }
-});// Approve application
-router.post('/approve/:id', async (req, res) => {
+});
+
+// Approve application
+router.post('/approve', async (req, res) => {
   try {
-    const db = req.db;
-    const { id } = req.params;
-    
-    if (!id || isNaN(id)) {
-      return res.status(400).json({ error: 'Valid application ID is required' });
-    }
-    
-    // Fetch application details
-    const app = await db.get('SELECT * FROM student_applications WHERE id = ?', [id]);
-    if (!app) {
-      return res.status(404).json({ error: 'Application not found' });
-    }
-    
-    if (app.status !== 'pending') {
-      return res.status(400).json({ error: 'Application is not pending approval' });
-    }
-    
-    // Generate Pass Number
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: 'ID is required' });
+
+    const collection = req.mongo.collection("student_applications");
+    const app = await collection.findOne({ _id: new ObjectId(id) });
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+
     const currentYear = new Date().getFullYear();
-    const paddedId = String(id).padStart(4, '0');
-    const passNumber = `PASS-${currentYear}-${paddedId}`;
+    const count = await collection.countDocuments({ passNumber: { $ne: null } });
+    const passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
 
-    // Assign Bus Number based on route
-    const routeToBusMap = {
-      'Hosur to Krishnagiri': 'B-12',
-      'ACE TO PANCHAKSHIPURAM': 'B-07',
-    };
-    const busNumber = routeToBusMap[app.route] || 'B-01'; // Default bus
+    const busRecord = await req.mongo.collection("bus_routes").findOne({ route: app.route, is_active: 1 });
+    const busNumber = app.busNumber || (busRecord ? busRecord.bus_number : 'PENDING');
 
-    // Generate QR data with URL to visual bus pass
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
     const qrData = JSON.stringify({
       name: app.name,
       regNo: app.regNo,
       route: app.route,
       validity: app.validity,
-      passNumber: passNumber,
-      busNumber: busNumber,
+      passNumber,
+      busNumber,
       approvedAt: new Date().toISOString(),
       passUrl: `${baseUrl}/pass/${app.regNo}`
     });
-    
-    await db.run(
-      'UPDATE student_applications SET status = ?, qrData = ?, passNumber = ?, busNumber = ? WHERE id = ?', 
-      ['approved', qrData, passNumber, busNumber, id]
+
+    await collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { 
+          status: 'approved',
+          payment_status: 'verified',
+          qrData, 
+          passNumber, 
+          busNumber, 
+          updatedAt: new Date().toISOString() 
+        } 
+      }
     );
-    
-    res.json({ 
-      message: 'Application approved successfully', 
-      qrData,
-      passNumber,
-      busNumber,
-      applicationId: id
-    });
+
+    res.json({ message: 'Approved successfully', passNumber, busNumber });
   } catch (err) {
-    console.error('Error approving application:', err);
-    res.status(500).json({ error: 'Failed to approve application' });
+    console.error('Approval Error:', err);
+    res.status(500).json({ error: 'Failed' });
   }
 });
 
 // Reject application
-router.post('/reject/:id', async (req, res) => {
+router.post('/reject', async (req, res) => {
   try {
-    const db = req.db;
-    const { id } = req.params;
-    
-    if (!id || isNaN(id)) {
-      return res.status(400).json({ error: 'Valid application ID is required' });
-    }
-    
-    // Check if application exists and is pending
-    const app = await db.get('SELECT * FROM student_applications WHERE id = ?', [id]);
-    if (!app) {
-      return res.status(404).json({ error: 'Application not found' });
-    }
-    
-    if (app.status !== 'pending') {
-      return res.status(400).json({ error: 'Application is not pending approval' });
-    }
-    
-    await db.run(
-      'UPDATE student_applications SET status = ? WHERE id = ?', 
-      ['rejected', id]
+    const { id, reason } = req.body;
+    await req.mongo.collection("student_applications").updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: 'rejected', rejection_reason: reason, updatedAt: new Date().toISOString() } }
     );
-    
-    res.json({ 
-      message: 'Application rejected successfully',
-      applicationId: id
-    });
+    res.json({ message: 'Rejected successfully' });
   } catch (err) {
-    console.error('Error rejecting application:', err);
-    res.status(500).json({ error: 'Failed to reject application' });
+    res.status(500).json({ error: 'Failed' });
   }
 });
 
 // Delete application
-router.delete('/delete/:id', async (req, res) => {
+router.delete('/applications/:id', async (req, res) => {
   try {
-    const db = req.db;
+    await req.mongo.collection("student_applications").deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ message: 'Deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// Update application
+router.put('/applications/:id', async (req, res) => {
+  try {
     const { id } = req.params;
-    
-    if (!id || isNaN(id)) {
-      return res.status(400).json({ error: 'Valid application ID is required' });
-    }
-    
-    // Check if application exists
-    const app = await db.get('SELECT * FROM student_applications WHERE id = ?', [id]);
-    if (!app) {
-      return res.status(404).json({ error: 'Application not found' });
-    }
-    
-    // Delete the application
-    await db.run('DELETE FROM student_applications WHERE id = ?', [id]);
-    
-    res.json({ 
-      message: 'Application deleted successfully',
-      applicationId: id
-    });
+    const updateData = req.body;
+    delete updateData._id;
+    updateData.updatedAt = new Date().toISOString();
+
+    await req.mongo.collection("student_applications").updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+    res.json({ message: 'Updated successfully' });
   } catch (err) {
-    console.error('Error deleting application:', err);
-    res.status(500).json({ error: 'Failed to delete application' });
+    res.status(500).json({ error: 'Failed' });
   }
 });
 
-// Get image by filename
-router.get('/image/:filename', (req, res) => {
-  try {
-    const { filename } = req.params;
-    const imagePath = path.join(__dirname, '..', 'uploads', filename);
-    
-    // Check if file exists
-    if (!fs.existsSync(imagePath)) {
-      return res.status(404).json({ error: 'Image not found' });
-    }
-    
-    res.sendFile(imagePath);
-  } catch (err) {
-    console.error('Error serving image:', err);
-    res.status(500).json({ error: 'Failed to serve image' });
-  }
-});
-
-// Export student applications to Excel
+// Export to Excel
 router.get('/export-excel', async (req, res) => {
   try {
-    const db = req.db;
-    const apps = await db.all('SELECT * FROM student_applications ORDER BY id DESC');
-
+    const apps = await req.mongo.collection("student_applications").find({}).sort({ _id: -1 }).toArray();
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Student Applications');
+    const worksheet = workbook.addWorksheet('Students');
 
     worksheet.columns = [
-      { header: 'ID', key: 'id', width: 10 },
-      { header: 'Name', key: 'name', width: 30 },
-      { header: 'Date of Birth', key: 'dob', width: 15 },
-      { header: 'Registration No', key: 'regNo', width: 20 },
-      { header: 'Branch & Year', key: 'branchYear', width: 20 },
-      { header: 'Mobile', key: 'mobile', width: 15 },
-      { header: 'Parent Mobile', key: 'parentMobile', width: 15 },
-      { header: 'Address', key: 'address', width: 40 },
-      { header: 'Route', key: 'route', width: 30 },
-      { header: 'Validity', key: 'validity', width: 15 },
-      { header: 'Aadhar Number', key: 'aadharNumber', width: 20 },
-      { header: 'Status', key: 'status', width: 15 },
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Reg No', key: 'regNo', width: 20 },
+      { header: 'Route', key: 'route', width: 25 },
+      { header: 'Status', key: 'status', width: 15 }
     ];
 
-    // Add rows from the database
-    apps.forEach(app => {
-      worksheet.addRow(app);
-    });
+    apps.forEach(app => worksheet.addRow(app));
 
-    // Set response headers for Excel download
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename=' + 'student_applications.xlsx'
-    );
-
-    // Write the workbook to the response
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=students.xlsx');
     await workbook.xlsx.write(res);
     res.end();
-
   } catch (err) {
-    console.error('Error exporting to Excel:', err);
-    res.status(500).json({ error: 'Failed to export data' });
+    res.status(500).json({ error: 'Export failed' });
   }
 });
 
 // =============================
-// Cancellation Requests (Admin)
+// Cancellation Handling
 // =============================
+
 router.get('/cancellation-requests', async (req, res) => {
   try {
-    const db = req.db;
-    const requests = await db.all(`
-      SELECT 
-        id,
-        name,
-        regNo,
-        route,
-        validity,
-        status,
-        cancellation_requested as cancellationRequested,
-        cancellation_reason as cancellationReason,
-        cancellation_requested_at as cancellationRequestedAt,
-        cancelled as isCancelled,
-        cancelled_at as cancelledAt,
-        cancelled_by as cancelledBy
-      FROM student_applications
-      WHERE cancellation_requested = 1 AND (cancelled IS NULL OR cancelled = 0)
-      ORDER BY cancellation_requested_at DESC NULLS LAST, id DESC
-    `);
-
-    res.json(requests);
+    const requests = await req.mongo.collection("student_applications")
+      .find({ cancellation_requested: 1, cancelled: { $ne: 1 } })
+      .sort({ cancellation_requested_at: -1 })
+      .toArray();
+    res.json(requests.map(r => ({ ...r, id: r._id.toString() })));
   } catch (err) {
-    console.error('Error fetching cancellation requests:', err);
-    res.status(500).json({ error: 'Failed to fetch cancellation requests' });
+    res.status(500).json({ error: 'Failed' });
   }
 });
 
 router.post('/process-cancellation/:id', async (req, res) => {
-  let db;
   try {
-    db = req.db;
     const { id } = req.params;
-    const { action, adminUsername } = req.body || {};
-
-    if (!id || isNaN(id)) {
-      return res.status(400).json({ error: 'Valid application ID is required' });
-    }
-    if (!action || !['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ error: 'Action must be "approve" or "reject"' });
-    }
-
-    const app = await db.get('SELECT * FROM student_applications WHERE id = ?', [id]);
-    if (!app) {
-      return res.status(404).json({ error: 'Application not found' });
-    }
-    if (!app.cancellation_requested) {
-      return res.status(400).json({ error: 'No pending cancellation request for this application' });
-    }
-
-    await db.run('BEGIN IMMEDIATE');
+    const { action, adminUsername } = req.body;
 
     if (action === 'approve') {
-      await db.run(
-        `UPDATE student_applications SET 
-           cancelled = 1,
-           cancelled_at = CURRENT_TIMESTAMP,
-           cancelled_by = ?,
-           cancellation_requested = 0,
-           updatedAt = CURRENT_TIMESTAMP,
-           status = 'cancelled'
-         WHERE id = ?`,
-        [adminUsername || 'admin', id]
+      await req.mongo.collection("student_applications").updateOne(
+        { _id: new ObjectId(id) },
+        { 
+          $set: { 
+            cancelled: 1, 
+            cancelled_at: new Date().toISOString(), 
+            cancelled_by: adminUsername, 
+            status: 'cancelled',
+            cancellation_requested: 0
+          } 
+        }
       );
     } else {
-      // reject: simply clear the request flags
-      await db.run(
-        `UPDATE student_applications SET 
-           cancellation_requested = 0,
-           updatedAt = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [id]
+      await req.mongo.collection("student_applications").updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { cancellation_requested: 0 } }
       );
     }
-
-    await db.run('COMMIT');
-
-    res.json({ 
-      message: action === 'approve' ? 'Cancellation approved' : 'Cancellation rejected',
-      id: Number(id),
-      action
-    });
+    res.json({ message: 'Processed' });
   } catch (err) {
-    try { if (db) await db.run('ROLLBACK'); } catch {}
-    console.error('Error processing cancellation request:', err);
-    res.status(500).json({ error: 'Failed to process cancellation request' });
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// =============================
+// Route Fees Management
+// =============================
+
+router.get('/route-fees', async (req, res) => {
+  try {
+    const fees = await req.mongo.collection("route_fees").find({}).sort({ route: 1 }).toArray();
+    res.json(fees.map(f => ({ ...f, id: f._id.toString() })));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+router.post('/route-fees', async (req, res) => {
+  try {
+    const data = req.body;
+    // Always build route from from/to for consistency
+    data.route = `${data.from} - ${data.to}`;
+    // Normalise is_active to integer for consistent querying
+    data.is_active = (data.is_active === true || data.is_active === 1 || data.is_active === '1') ? 1 : 0;
+    data.fee_amount = Number(data.fee_amount);
+    data.updated_at = new Date().toISOString();
+    data.created_at = data.created_at || new Date().toISOString();
+
+    const result = await req.mongo.collection("route_fees").updateOne(
+      { route: data.route },
+      { $set: data },
+      { upsert: true }
+    );
+    res.json({ message: 'Saved', id: result.upsertedId ? result.upsertedId.toString() : null });
+  } catch (err) {
+    console.error('Route fee save error:', err);
+    res.status(500).json({ error: 'Failed to save route fee' });
+  }
+});
+
+router.put('/route-fees/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    delete data._id;
+    delete data.id;
+    // Rebuild route from from/to in case they changed
+    if (data.from && data.to) data.route = `${data.from} - ${data.to}`;
+    // Normalise is_active
+    if (data.is_active !== undefined) {
+      data.is_active = (data.is_active === true || data.is_active === 1 || data.is_active === '1') ? 1 : 0;
+    }
+    if (data.fee_amount !== undefined) data.fee_amount = Number(data.fee_amount);
+    data.updated_at = new Date().toISOString();
+    await req.mongo.collection("route_fees").updateOne({ _id: new ObjectId(id) }, { $set: data });
+    res.json({ message: 'Updated' });
+  } catch (err) {
+    console.error('Route fee update error:', err);
+    res.status(500).json({ error: 'Failed to update route fee' });
+  }
+});
+
+router.delete('/route-fees/:id', async (req, res) => {
+  try {
+    await req.mongo.collection("route_fees").deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// =============================
+// Bus Routes Management
+// =============================
+
+router.get('/bus-routes', async (req, res) => {
+  try {
+    const routes = await req.mongo.collection("bus_routes").find({}).sort({ bus_number: 1 }).toArray();
+    res.json(routes.map(r => ({ ...r, id: r._id.toString() })));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// Get seat counts per bus number (for showing available seats)
+router.get('/bus-seat-counts', async (req, res) => {
+  try {
+    // Count students per bus_number where status is approved/pending
+    const pipeline = [
+      { 
+        $match: { 
+          busNumber: { $exists: true, $ne: null, $nin: ['', 'PENDING'] }, 
+          status: { $in: ['approved', 'pending'] } 
+        } 
+      },
+      { $group: { _id: '$busNumber', count: { $sum: 1 } } }
+    ];
+    const counts = await req.mongo.collection("student_applications").aggregate(pipeline).toArray();
+    const result = {};
+    counts.forEach(c => { result[c._id] = c.count; });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch seat counts' });
+  }
+});
+
+router.post('/bus-routes', async (req, res) => {
+  try {
+    const data = req.body;
+    data.updated_at = new Date().toISOString();
+    await req.mongo.collection("bus_routes").insertOne(data);
+    res.json({ message: 'Saved' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+router.put('/bus-routes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    delete data._id;
+    delete data.id;
+    data.updated_at = new Date().toISOString();
+    await req.mongo.collection("bus_routes").updateOne({ _id: new ObjectId(id) }, { $set: data });
+    res.json({ message: 'Updated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+router.delete('/bus-routes/:id', async (req, res) => {
+  try {
+    await req.mongo.collection("bus_routes").deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// =============================
+// Payment Details
+// =============================
+
+router.get('/payment-details', async (req, res) => {
+  try {
+    const payments = await req.mongo.collection("student_applications")
+      .find({ payment_status: { $in: ['paid', 'verified'] } })
+      .sort({ payment_date: -1 })
+      .toArray();
+    res.json(payments.map(p => ({ ...p, id: p._id.toString() })));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+router.get('/export-payments-excel', async (req, res) => {
+  try {
+    const payments = await req.mongo.collection("student_applications")
+      .find({ payment_status: { $in: ['paid', 'verified'] } })
+      .sort({ payment_date: -1 })
+      .toArray();
+    
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Payments');
+    worksheet.columns = [
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Reg No', key: 'regNo', width: 20 },
+      { header: 'Amount', key: 'fee_amount', width: 15 },
+      { header: 'Status', key: 'payment_status', width: 15 }
+    ];
+    payments.forEach(p => worksheet.addRow(p));
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=payments.xlsx');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    res.status(500).json({ error: 'Export failed' });
+  }
+});
+
+router.post('/approve-payment-pass', async (req, res) => {
+  try {
+    const { id } = req.body;
+    const collection = req.mongo.collection("student_applications");
+    const app = await collection.findOne({ _id: new ObjectId(id) });
+    
+    let passNumber = app.passNumber;
+    let busNumber = app.busNumber;
+    
+    if (!passNumber) {
+      const currentYear = new Date().getFullYear();
+      const count = await collection.countDocuments({ passNumber: { $ne: null } });
+      passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+      
+      const busRecord = await req.mongo.collection("bus_routes").findOne({ route: app.route, is_active: 1 });
+      busNumber = app.busNumber || (busRecord ? busRecord.bus_number : 'PENDING');
+    }
+
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const qrData = JSON.stringify({
+      name: app.name,
+      regNo: app.regNo,
+      route: app.route,
+      validity: app.validity,
+      passNumber,
+      busNumber,
+      approvedAt: new Date().toISOString(),
+      passUrl: `${baseUrl}/pass/${app.regNo}`
+    });
+
+    await collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { 
+          status: 'approved',
+          payment_status: 'verified',
+          qrData,
+          passNumber, 
+          busNumber, 
+          updatedAt: new Date().toISOString() 
+        } 
+      }
+    );
+    res.json({ message: 'Payment verified and pass issued' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+router.post('/reject-payment-pass', async (req, res) => {
+  try {
+    const { id, reason } = req.body;
+    await req.mongo.collection("student_applications").updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: 'rejected', rejection_reason: reason, updatedAt: new Date().toISOString() } }
+    );
+    res.json({ message: 'Rejected' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// =============================
+// System Settings
+// =============================
+
+router.get('/settings', async (req, res) => {
+  try {
+    const settings = await req.mongo.collection("system_settings").find({}).toArray();
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+router.post('/update-setting', async (req, res) => {
+  try {
+    const { key, value } = req.body;
+    await req.mongo.collection("system_settings").updateOne(
+      { key: key },
+      { $set: { value: value, updated_at: new Date().toISOString() } },
+      { upsert: true }
+    );
+    res.json({ message: 'Updated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
   }
 });
 

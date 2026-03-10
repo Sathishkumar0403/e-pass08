@@ -1,6 +1,8 @@
 import React from 'react';
 import styles from './BusPassTemplate.module.css';
 import { QRCodeSVG } from 'qrcode.react';
+import { FaBus, FaShieldAlt } from 'react-icons/fa';
+import { getImageUrl } from '../config';
 
 function BusPassTemplate({ studentData }) {
   if (!studentData) return null;
@@ -9,125 +11,122 @@ function BusPassTemplate({ studentData }) {
     photo,
     name,
     dob,
-    branch,
+    department,
     year,
     college,
-    address,
-    validTill,
     regNo,
     passNo,
     busNo,
     userType,
   } = studentData;
 
+  const qrValue = `BUS PASS - A.E.R.I TRANSPORT
+━━━━━━━━━━━━━━
+👤 ${name || 'N/A'}
+🆔 ${regNo || 'N/A'}
+🚌 Bus: ${busNo || studentData.busNumber || 'N/A'}
+🎫 Pass: ${studentData.passNumber || passNo || 'N/A'}
+✅ Status: ${studentData.cancelled ? 'CANCELLED' : 'ACTIVE'}`;
+
   return (
-    <div className={styles.cardWrapper}>
-      <div id="bus-pass-template" className={styles.card} role="region" aria-label="Student Bus Pass">
-        <div className={styles.leftColumn}>
-          <div className={styles.logoArea}>
-            <div className={styles.logo}>E-BUS</div>
-            <div className={styles.collegeName}>{college || 'Your College Name'}</div>
-          </div>
+    <div className={styles.passContainer}>
+      <div
+        id="bus-pass-template"
+        className={`${styles.card} ${studentData.cancelled ? styles.cancelledCard : ''}`}
+      >
+        {/* Holographic Overlay Effect */}
+        <div className={styles.hologram}></div>
 
-          <div className={styles.photoBox}>
-            <img 
-              src={photo || '/placeholder-profile.png'} 
-              alt={name || 'Student'} 
-              className={styles.photo}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/placeholder-profile.png';
-              }}
-            />
-          </div>
-
-          <div className={styles.idBlock}>
-            <div className={styles.regLabel}>Reg. No.</div>
-            <div className={styles.regValue}>{regNo || '-'}</div>
-          </div>
-
-          <div className={styles.subInfo}>
-            <div className={styles.subInfoItem}>
-              <div className={styles.subInfoLabel}>Pass No</div>
-              <div className={styles.subInfoValue}>{passNo || '-'}</div>
+        <div className={styles.header}>
+          <div className={styles.logoGroup}>
+            <div className={styles.logoIcon}><FaBus /></div>
+            <div>
+              <h1 className={styles.logoText}>E-BUS PASS</h1>
+              <p className={styles.collegeName}>{college || 'A.E.R.I'}</p>
             </div>
-            <div className={styles.subInfoItem}>
-              <div className={styles.subInfoLabel}>Bus No</div>
-              <div className={styles.subInfoValue}>{busNo || '-'}</div>
-            </div>
-
+          </div>
+          <div className={styles.authBadge}>
+            <FaShieldAlt /> VERIFIED
           </div>
         </div>
 
-        <div className={styles.rightColumn}>
-          <div className={styles.hdrRow}>
-            <h2 className={styles.passTitle}>STUDENT BUS PASS</h2>
-            <div className={styles.validUntil}>
-              <div className={styles.validLabel}>Valid Upto</div>
-              <div className={styles.validValue}>{validTill || 'N/A'}</div>
+        <div className={styles.cardBody}>
+          <div className={styles.profileSection}>
+            <div className={styles.photoFrame}>
+              <img
+                src={getImageUrl(photo) || '/placeholder-profile.png'}
+                alt={name}
+                className={styles.photo}
+                onError={(e) => { e.target.src = '/placeholder-profile.png'; }}
+              />
+            </div>
+            <div className={styles.regBadge}>
+              <span className={styles.regLabel}>ID NUMBER</span>
+              <span className={styles.regValue}>{regNo || '---'}</span>
             </div>
           </div>
 
-          <div className={styles.infoGrid}>
-            <div className={styles.infoRow}>
-              <div className={styles.infoLabel}>Name</div>
-              <div className={styles.infoValue}>{name || 'Full Name'}</div>
+          <div className={styles.infoSection}>
+            <div className={styles.userTypeHeader}>
+              {userType?.toUpperCase() || 'STUDENT'} TRANSPORT PASS
             </div>
 
-            <div className={styles.infoRow}>
-              <div className={styles.infoLabel}>Date of Birth</div>
-              <div className={styles.infoValue}>{dob || 'DD-MM-YYYY'}</div>
+            <div className={styles.detailsGrid}>
+              <div className={styles.detail}>
+                <span className={styles.label}>FULL NAME</span>
+                <span className={styles.value}>{name || 'N/A'}</span>
+              </div>
+              <div className={styles.detail}>
+                <span className={styles.label}>DEPT / YEAR</span>
+                <span className={styles.value}>{department || '-'} {year ? `/ ${year}` : ''}</span>
+              </div>
+              <div className={styles.detail}>
+                <span className={styles.label}>DATE OF BIRTH</span>
+                <span className={styles.value}>{dob || 'N/A'}</span>
+              </div>
             </div>
 
-            <div className={styles.infoRow}>
-              <div className={styles.infoLabel}>Branch / Course</div>
-              <div className={styles.infoValue}>{branch || '-'} / {year || '-'}</div>
+            <div className={styles.travelBar}>
+              <div className={styles.travelItem}>
+                <span className={styles.travelLabel}>BUS NO</span>
+                <span className={styles.travelValue}>{busNo || studentData.busNumber || '--'}</span>
+              </div>
+              <div className={styles.travelItem}>
+                <span className={styles.travelLabel}>PASS NO</span>
+                <span className={styles.travelValue}>{studentData.passNumber || passNo || 'PENDING'}</span>
+              </div>
             </div>
-
-            <div className={styles.infoRow}>
-              <div className={styles.infoLabel}>Address</div>
-              <div className={styles.infoValue}>{address || 'Student address goes here'}</div>
-            </div>
-            
-            <div className={styles.infoRow}>
-              <div className={styles.infoLabel}>User Type</div>
-              <div className={styles.infoValue}>{userType === 'staff' ? 'Staff' : 'Student'}</div>
-            </div>
-
           </div>
 
-          <div className={styles.footerRow}>
-            <div className={styles.issuer}>Issued by: A.E.R.I Transport</div>
-            <div className={styles.qrBox}>
+          <div className={styles.qrSection}>
+            <div className={styles.qrWrapper}>
               <QRCodeSVG
-                value={JSON.stringify({
-                  regNo,
-                  name,
-                  branch,
-                  year,
-                  validTill,
-                  status: studentData.status,
-                  passNo,
-                  busNo,
-                  cancelled: studentData.cancelled,
-                  cancelledAt: studentData.cancelled_at,
-                  cancelledBy: studentData.cancelled_by
-                })}
-                size={140}
+                value={qrValue}
+                size={110}
                 level="H"
-                includeMargin={true}
-                style={{ 
-                  opacity: studentData.cancelled ? 0.5 : 1,
-                  filter: studentData.cancelled ? 'grayscale(100%)' : 'none'
+                includeMargin={false}
+                imageSettings={{
+                  src: "/favicon.ico",
+                  x: undefined,
+                  y: undefined,
+                  height: 24,
+                  width: 24,
+                  excavate: true,
                 }}
               />
-              {studentData.cancelled && (
-                <div className={styles.cancelledOverlay}>
-                  CANCELLED
-                </div>
-              )}
             </div>
           </div>
+        </div>
+
+        {studentData.cancelled && (
+          <div className={styles.cancelledOverlay}>
+            <div className={styles.cancelledStamp}>CANCELLED</div>
+          </div>
+        )}
+
+        <div className={styles.footer}>
+          <span>ISSUED BY A.E.R.I TRANSPORT OFFICE</span>
+          <span className={styles.securityCode}>SECURE-PASS-{regNo?.slice(-4) || 'XXXX'}</span>
         </div>
       </div>
     </div>

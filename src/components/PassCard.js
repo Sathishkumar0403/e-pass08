@@ -9,12 +9,6 @@ function PassCard({ pass }) {
         <div className={styles.header}>
           <div className={styles.title}>E-BUS PASS</div>
           <div className={styles.subtitle}>Digital Student Transport Card</div>
-          {pass.validTill && (
-            <div className={styles.validTillBox}>
-              <div className={styles.validTillLabel}>VALID TILL</div>
-              <div className={styles.validTillValue}>{pass.validTill}</div>
-            </div>
-          )}
         </div>
 
         <div className={styles.divider} />
@@ -23,8 +17,8 @@ function PassCard({ pass }) {
           <div className={styles.photoSection}>
             <div className={styles.photoBox}>
               {pass.photo ? (
-                <img 
-                  src={pass.photo} 
+                <img
+                  src={pass.photo}
                   alt={`${pass.name}'s photo`}
                   className={styles.photo}
                 />
@@ -69,6 +63,17 @@ function PassCard({ pass }) {
                 <div className={styles.value}>{pass.route}</div>
               </div>
             </div>
+
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <div className={styles.label}>BUS NO.</div>
+                <div className={styles.value}>{pass.busNumber || 'N/A'}</div>
+              </div>
+              <div className={styles.field}>
+                <div className={styles.label}>PASS NO.</div>
+                <div className={styles.value}>{pass.passNumber || 'PENDING'}</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -76,7 +81,6 @@ function PassCard({ pass }) {
 
         <div className={styles.footer}>
           <div>Issued by: A.E.R.I Transport</div>
-          {pass.validTill && <div>Valid Until: {pass.validTill}</div>}
         </div>
       </div>
     </div>

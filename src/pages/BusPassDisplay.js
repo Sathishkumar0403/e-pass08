@@ -1,8 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import BusPassTemplate from '../components/BusPassTemplate';
-import { FaArrowLeft, FaPrint, FaShare, FaDownload } from 'react-icons/fa';
+import {
+  FaArrowLeft, FaPrint, FaShareAlt, FaDownload,
+  FaSpinner, FaInfoCircle, FaShieldAlt
+} from 'react-icons/fa';
 import { downloadBusPass } from '../utils/downloadPass';
+import { getStudentPass } from '../utils/api';
+import styles from './BusPassDisplay.module.css';
 
 function BusPassDisplay() {
   const { regNo } = useParams();
@@ -14,29 +20,16 @@ function BusPassDisplay() {
 
   const fetchStudentData = useCallback(async () => {
     try {
-      const response = await fetch(`/api/student/pass/${regNo}`);
-      if (!response.ok) {
-        throw new Error('Student not found or not approved');
-      }
-      const data = await response.json();
-      
-      // Transform the data to match our template format
-      const transformedData = {
-        name: data.name || 'Full Name',
-        regNo: data.regNo || regNo,
-        route: data.route || 'Main Route',
+      setLoading(true);
+      const data = await getStudentPass(regNo);
+
+      setStudentData({
+        ...data,
         validTill: data.validity || data.validTill || 'N/A',
-        approvedAt: data.approvedAt,
-        photo: data.photo || null,
-        branch: data.branch || data.branchYear || 'Branch',
-        year: data.year || (data.branchYear ? data.branchYear.split(' ')[0] : 'Year'),
-        college: data.college || 'Your College Name',
-        address: data.address || data.collegeAddress || 'College Address',
-        dob: data.dob || 'DD-MM-YYYY',
-        mobile: data.mobile || 'N/A'
-      };
-      
-      setStudentData(transformedData);
+        department: data.department || 'N/A',
+        year: data.year || 'N/A',
+        college: data.college || 'A.E.R.I',
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -45,69 +38,51 @@ function BusPassDisplay() {
   }, [regNo]);
 
   useEffect(() => {
-    // Check if data is passed via location state (from QR scan)
-    if (location.state && location.state.studentData) {
+    if (location.state?.studentData) {
       setStudentData(location.state.studentData);
       setLoading(false);
-      return;
-    }
-
-    // If no data in state, try to fetch from API using regNo
-    if (regNo) {
+    } else if (regNo) {
       fetchStudentData();
     } else {
-      setError('No student data provided');
+      setError('System Access Denied: Missing Registry');
       setLoading(false);
     }
   }, [regNo, location.state, fetchStudentData]);
 
-
-
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   const handleShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Student Bus Pass',
-          text: `Bus pass for ${studentData.name}`,
+          title: 'E-Bus Pass Identity',
+          text: `Digital identification for ${studentData.name}`,
           url: window.location.href
         });
-      } catch (err) {
-        console.log('Error sharing:', err);
-      }
+      } catch (err) { }
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      alert('Secure link copied to clipboard');
     }
   };
 
   const handleDownload = async () => {
     try {
-      setError(null);
       setIsDownloading(true);
       await downloadBusPass('bus-pass-template', `bus-pass-${studentData.regNo}`);
     } catch (error) {
-      console.error('Download failed:', error);
-      setError('Failed to download bus pass: ' + (error.message || 'Please try again.'));
+      setError('Download restricted: Internal system error');
     } finally {
       setIsDownloading(false);
     }
   };
 
-  const goBack = () => {
-    window.history.back();
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading bus pass...</p>
+      <div className={styles.displayPage}>
+        <div className={styles.loadingBox}>
+          <FaSpinner className={styles.spin} />
+          <h2>Decrypting Asset...</h2>
         </div>
       </div>
     );
@@ -115,15 +90,13 @@ function BusPassDisplay() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-lg shadow-lg">
-          <h2 className="text-xl font-bold text-red-600 mb-4">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={goBack}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors"
-          >
-            Go Back
+      <div className={styles.displayPage}>
+        <div className={styles.errorBox}>
+          <FaInfoCircle className={styles.errIcon} />
+          <h2>Access Error</h2>
+          <p>{error}</p>
+          <button onClick={() => window.history.back()} className={styles.backBtn}>
+            <FaArrowLeft /> Return to Portal
           </button>
         </div>
       </div>
@@ -131,100 +104,89 @@ function BusPassDisplay() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={goBack}
-              className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              <FaArrowLeft className="mr-2" />
-              Back
+    <div className={styles.displayPage}>
+      <div className={styles.bgGlow}></div>
+
+      <div className={styles.container}>
+        <motion.header
+          className={styles.header}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className={styles.navGroup}>
+            <button onClick={() => window.history.back()} className={styles.iconBtn} title="Back">
+              <FaArrowLeft />
             </button>
-            <h1 className="text-2xl font-bold text-gray-800">Student Bus Pass</h1>
-            <div className="flex gap-2">
-              <button
-                onClick={handleDownload}
-                disabled={isDownloading}
-                className="flex items-center bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-4 py-2 rounded transition-colors"
-              >
-                <FaDownload className="mr-2" />
-                {isDownloading ? 'Downloading...' : 'Download JPEG'}
-              </button>
-              <button
-                onClick={handlePrint}
-                className="flex items-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
-              >
-                <FaPrint className="mr-2" />
-                Print
-              </button>
-              <button
-                onClick={handleShare}
-                className="flex items-center bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded transition-colors"
-              >
-                <FaShare className="mr-2" />
-                Share
-              </button>
+            <div className={styles.headerText}>
+              <h1>Digital Identity</h1>
+              <p>Registry Ref: {studentData.regNo}</p>
             </div>
           </div>
-        </div>
-
-        {/* Bus Pass Display */}
-        <div className="flex justify-center">
-          <BusPassTemplate studentData={studentData} />
-        </div>
-
-        {/* Additional Info */}
-        <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Pass Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Student Name</p>
-              <p className="font-semibold">{studentData.name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Registration Number</p>
-              <p className="font-semibold">{studentData.regNo}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Route</p>
-              <p className="font-semibold">{studentData.route}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Valid Until</p>
-              <p className="font-semibold">{studentData.validity}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">College</p>
-              <p className="font-semibold">ACE / MGR College / APTC</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Course</p>
-              <p className="font-semibold">{studentData.branchYear || 'II nd year / Computer Science and Engineering'}</p>
-            </div>
+          <div className={styles.actionGroup}>
+            <button onClick={handleDownload} disabled={isDownloading} className={styles.primaryAction}>
+              {isDownloading ? <FaSpinner className={styles.spin} /> : <FaDownload />}
+              <span>Download</span>
+            </button>
+            <button onClick={handlePrint} className={styles.secondaryAction} title="Print">
+              <FaPrint />
+            </button>
+            <button onClick={handleShare} className={styles.secondaryAction} title="Share">
+              <FaShareAlt />
+            </button>
           </div>
+        </motion.header>
+
+        <div className={styles.mainLayout}>
+          <motion.div
+            className={styles.passWrapper}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className={styles.viewerLabel}>
+              <FaShieldAlt /> SECURE SYSTEM VIEW
+            </div>
+            <div className={styles.cardFrame}>
+              <BusPassTemplate studentData={studentData} />
+            </div>
+          </motion.div>
+
+          <motion.div
+            className={styles.metaPanel}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className={styles.metaCard}>
+              <div className={styles.metaHeader}>
+                <FaInfoCircle /> <span>System Information</span>
+              </div>
+              <div className={styles.infoList}>
+                <div className={styles.infoItem}>
+                  <label>ISSUED ON</label>
+                  <span>{new Date(studentData.approvedAt || Date.now()).toLocaleDateString()}</span>
+                </div>
+                <div className={styles.infoItem}>
+                  <label>COMMUTE ROUTE</label>
+                  <span>{studentData.route}</span>
+                </div>
+                <div className={styles.infoItem}>
+                  <label>EXPIRY DATE</label>
+                  <span className={styles.expiryText}>{studentData.validTill}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.securityBox}>
+              <FaShieldAlt className={styles.secIcon} />
+              <div>
+                <h5>Identity Protected</h5>
+                <p>This pass is protected by 256-bit encryption. Multi-factor verification required for changes.</p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
-
-      {/* Print Styles */}
-      <style jsx>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print-area, .print-area * {
-            visibility: visible;
-          }
-          .print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-        }
-      `}</style>
     </div>
   );
 }

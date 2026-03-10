@@ -1,49 +1,19 @@
-// Preferred base if provided; otherwise auto-detect at runtime
-const ENV_API_BASE = (process.env.REACT_APP_API_BASE || "").trim();
-let selectedApiBase = ENV_API_BASE || ""; // cached after first successful call
-
-function buildCandidateBases() {
-  if (ENV_API_BASE) return [ENV_API_BASE];
-  const origin = (typeof window !== 'undefined' && window.location) ? window.location.origin : '';
-  const candidates = [];
-  // Prefer common backend ports first to avoid proxy misroutes
-  candidates.push(
-    'http://localhost:3001/api',
-    'http://localhost:3002/api',
-    'http://127.0.0.1:3001/api',
-    'http://127.0.0.1:3002/api'
-  );
-  if (origin) candidates.push(`${origin}/api`);
-  return candidates;
-}
-
 // Helper function for API calls with timeout
 import { API_BASE_URL, FALLBACK_API_URLS } from '../config';
 
 export async function apiCall(endpoint, options = {}) {
-  const API_URLS = [API_BASE_URL, ...FALLBACK_API_URLS].filter((url, index, self) => 
-    self.indexOf(url) === index // Remove duplicates
+  const API_URLS = [API_BASE_URL, ...FALLBACK_API_URLS].filter((url, index, self) =>
+    self.indexOf(url) === index
   );
-  
-  let lastError = null;
-  let attempts = 0;
 
-  // Try each base URL in sequence
+  let lastError = null;
+
   for (const baseURL of API_URLS) {
     try {
       const url = `${baseURL}${endpoint}`;
-      console.log('Attempting API call to:', url);
+      const defaultOptions = { headers: {} };
+      const mergedOptions = { ...defaultOptions, ...options };
 
-      const defaultOptions = {
-        headers: {},
-      };
-
-      const mergedOptions = {
-        ...defaultOptions,
-        ...options,
-      };
-
-      // Don't set Content-Type for FormData
       if (!options.body || !(options.body instanceof FormData)) {
         mergedOptions.headers = {
           'Content-Type': 'application/json',
@@ -51,32 +21,16 @@ export async function apiCall(endpoint, options = {}) {
         };
       }
 
-      attempts++;
-      console.log(`Attempt ${attempts}/${API_URLS.length} - Trying ${url}`);
-      
-      // Log the request details
-      console.log('Making API request to:', url, {
-        method: mergedOptions.method,
-        headers: mergedOptions.headers,
-        bodyType: mergedOptions.body instanceof FormData ? 'FormData' : typeof mergedOptions.body
-      });
-
-      // Don't include credentials for now as we're not using sessions
       const response = await fetch(url, {
         ...mergedOptions,
         credentials: 'omit'
       });
-      
+
       let data;
       const contentType = response.headers.get('content-type');
-      
+
       if (contentType && contentType.includes('application/json')) {
-        try {
-          data = await response.json();
-        } catch (e) {
-          console.error('Failed to parse response as JSON:', e);
-          throw new Error('Invalid JSON response from server');
-        }
+        data = await response.json();
       } else {
         const text = await response.text();
         try {
@@ -87,207 +41,350 @@ export async function apiCall(endpoint, options = {}) {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || 'Server returned an error');
+        throw new Error(data.error || data.message || `Server error: ${response.status}`);
       }
-
-      console.log('API call successful:', {
-        endpoint,
-        status: response.status,
-        dataKeys: Object.keys(data)
-      });
 
       return data;
     } catch (error) {
-      console.error(`API call failed for ${baseURL}${endpoint}:`, error);
+      console.warn(`API call failed for ${baseURL}${endpoint}:`, error.message);
       lastError = error;
-      continue; // Try next base URL
+      continue;
     }
   }
 
-  // If we get here, all attempts failed
   throw new Error(lastError?.message || 'Failed to connect to any API endpoint');
 }
 
-// Student applies for bus pass
+/**
+ * Student APIs
+ */
+
 export async function applyStudent(form) {
   const formData = new FormData();
-  
-  // Log the form data for debugging
-  console.log('Preparing form data:', Object.keys(form));
 
   for (const [key, value] of Object.entries(form)) {
     if (value !== undefined && value !== null) {
-      // Properly handle file fields
-      if (
-        key === 'photo' ||
-        key === 'aadharPhoto' ||
-        key === 'collegeIdPhoto'
-      ) {
-        if (value) {
-          console.log(`Adding file for ${key}:`, value.name);
+      if (['photo', 'aadharPhoto', 'collegeIdPhoto'].includes(key)) {
+        if (value instanceof File) {
           formData.append(key, value);
         }
       } else {
-        console.log(`Adding field ${key}:`, value);
         formData.append(key, value);
       }
     }
   }
 
   try {
-    const response = await apiCall('/student/apply', {
+    return await apiCall('/student/apply', {
       method: 'POST',
       body: formData,
     });
-    console.log('Application submission response:', response);
-    return response;
   } catch (error) {
-    console.error('Application submission failed:', error);
-    throw new Error(
-      error.message || 'Failed to submit application. Please try again.'
-    );
+    throw new Error(error.message || 'Failed to submit application.');
   }
 }
 
-// Student login
 export async function studentLogin(regNo, dob) {
-  try {
-    return await apiCall(`/student/login`, {
-      method: "POST",
-      body: JSON.stringify({ regNo, dob }),
-    });
-  } catch (error) {
-    console.error('Error in student login:', error);
-    throw new Error(error.message || 'Login failed');
-  }
+  return apiCall(`/student/login`, {
+    method: "POST",
+    body: JSON.stringify({ regNo, dob }),
+  });
 }
 
-// Admin login
-export async function adminLogin(username, password) {
-  try {
-    const response = await apiCall(`/admin/login`, {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
-    return response;
-  } catch (error) {
-    console.error('Error in admin login:', error);
-    throw new Error(error.message || 'Login failed');
-  }
+export async function getStudentStatus(regNo) {
+  return apiCall(`/student/status/${regNo}`);
 }
 
-// Get all applications (admin)
-export async function getApplications() {
-  try {
-    return await apiCall(`/admin/applications`);
-  } catch (error) {
-    console.error('Error fetching applications:', error);
-    throw new Error(error.message || 'Failed to fetch applications');
-  }
+export async function processPayment(paymentData) {
+  return apiCall(`/student/pay`, {
+    method: "POST",
+    body: JSON.stringify(paymentData),
+  });
 }
 
-// Approve application (admin)
-export async function approveApplication(id) {
-  try {
-    return await apiCall(`/admin/approve/${id}`, {
-      method: "POST",
-    });
-  } catch (error) {
-    console.error('Error approving application:', error);
-    throw new Error(error.message || 'Failed to approve application');
-  }
+export async function createRazorpayOrder(amount, regNo) {
+  return apiCall('/student/create-order', {
+    method: 'POST',
+    body: JSON.stringify({ amount, regNo }),
+  });
 }
 
-// Reject application (admin)
-export async function rejectApplication(id) {
-  try {
-    return await apiCall(`/admin/reject/${id}`, {
-      method: "POST",
-    });
-  } catch (error) {
-    console.error('Error rejecting application:', error);
-    throw new Error(error.message || 'Failed to reject application');
-  }
+export async function createPaymentOrder(regNo, amount) {
+  return apiCall('/student/create-payment-order', {
+    method: 'POST',
+    body: JSON.stringify({ regNo, amount }),
+  });
 }
 
-// Delete application (admin)
-export async function deleteApplication(id) {
-  try {
-    return await apiCall(`/admin/delete/${id}`, {
-      method: "DELETE",
-    });
-  } catch (error) {
-    console.error('Error deleting application:', error);
-    throw new Error(error.message || 'Failed to delete application');
-  }
+export async function verifyPayment(regNo, paymentData) {
+  return apiCall('/student/verify-payment', {
+    method: 'POST',
+    body: JSON.stringify({ regNo, ...paymentData }),
+  });
 }
 
-// Upload fees bill (student)
+export async function getPaymentStatus(regNo) {
+  return apiCall(`/student/payment-status/${regNo}`);
+}
+
 export async function uploadFeesBill(regNo, file) {
   const formData = new FormData();
   formData.append('regNo', regNo);
   formData.append('feesBill', file);
-  
-  try {
-    return await apiCall(`/student/upload-fees-bill`, {
-      method: 'POST',
-      body: formData,
-    });
-  } catch (error) {
-    console.error('Error uploading fees bill:', error);
-    throw new Error(error.message || 'Failed to upload fees bill');
-  }
+  return apiCall('/student/upload-fees-bill', {
+    method: 'POST',
+    body: formData,
+  });
 }
 
-// Request pass cancellation (student)
-export async function requestPassCancellation(regNo, reason) {
-  try {
-    return await apiCall(`/student/request-cancellation`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ regNo, reason }),
-    });
-  } catch (error) {
-    console.error('Error requesting pass cancellation:', error);
-    throw new Error(error.message || 'Failed to request pass cancellation');
-  }
+export async function requestCancellation(regNo, reason) {
+  return apiCall('/student/request-cancellation', {
+    method: 'POST',
+    body: JSON.stringify({ regNo, reason }),
+  });
 }
 
-// Check cancellation status (student)
+export const requestPassCancellation = requestCancellation;
+
 export async function checkCancellationStatus(regNo) {
-  try {
-    return await apiCall(`/student/cancellation-status/${encodeURIComponent(regNo)}`, {
-      method: 'GET',
-    });
-  } catch (error) {
-    console.error('Error checking cancellation status:', error);
-    throw new Error(error.message || 'Failed to check cancellation status');
-  }
+  return apiCall(`/student/cancellation-status/${regNo}`);
 }
 
-// Get cancellation requests (admin)
+export async function getStudentPass(regNo) {
+  return apiCall(`/student/pass/${regNo}`);
+}
+
+export async function getStudentDetails(regNo) {
+  return apiCall(`/student/details/${regNo}`);
+}
+
+export async function verifyPassData(regNo) {
+  return apiCall(`/student/verify-pass/${regNo}`);
+}
+
+export async function getRouteFee(route) {
+  return apiCall(`/student/get-fee/${encodeURIComponent(route)}`);
+}
+
+/**
+ * Admin APIs
+ */
+
+export async function adminLogin(username, password) {
+  return apiCall(`/admin/login`, {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function getApplications(filters = {}) {
+  const params = new URLSearchParams(filters).toString();
+  return apiCall(`/admin/applications${params ? `?${params}` : ''}`);
+}
+
+export async function approveApplication(id) {
+  return apiCall(`/admin/approve`, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+}
+
+export async function rejectApplication(id, reason) {
+  return apiCall(`/admin/reject`, {
+    method: "POST",
+    body: JSON.stringify({ id, reason }),
+  });
+}
+
+export async function deleteApplication(id) {
+  return apiCall(`/admin/applications/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function updateApplication(id, data) {
+  return apiCall(`/admin/applications/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function approvePaymentPass(id) {
+  return apiCall(`/admin/approve-payment-pass`, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+}
+
+export async function rejectPaymentPass(id, reason) {
+  return apiCall(`/admin/reject-payment-pass`, {
+    method: "POST",
+    body: JSON.stringify({ id, reason }),
+  });
+}
+
+
+export async function getPaymentDetails() {
+  return apiCall('/admin/payment-details');
+}
+
+export async function exportPaymentsToExcel() {
+  // Use window.location for file downloads
+  const url = `${API_BASE_URL}/admin/export-excel`;
+  window.location.href = url;
+}
+
+export async function processCancellationRequest(id, action) {
+  return apiCall(`/admin/process-cancellation/${id}`, {
+    method: 'POST',
+    body: JSON.stringify({ action }),
+  });
+}
+
+/**
+ * Route & Fee APIs
+ */
+
+export async function getRouteFees() {
+  return apiCall(`/admin/route-fees`);
+}
+
+export async function addRouteFee(routeData) {
+  return apiCall(`/admin/route-fees`, {
+    method: "POST",
+    body: JSON.stringify(routeData),
+  });
+}
+
+export const createRouteFee = addRouteFee;
+
+export async function deleteRouteFee(id) {
+  return apiCall(`/admin/route-fees/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function updateRouteFee(id, routeData) {
+  return apiCall(`/admin/route-fees/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(routeData),
+  });
+}
+
+/**
+ * Bus Management APIs
+ */
+
+export async function getBusRoutes() {
+  return apiCall('/admin/bus-routes');
+}
+
+export async function getBusSeatCounts() {
+  return apiCall('/admin/bus-seat-counts');
+}
+
+export async function addBusRoute(busData) {
+  return apiCall('/admin/bus-routes', {
+    method: 'POST',
+    body: JSON.stringify(busData),
+  });
+}
+
+export const createBusRoute = addBusRoute;
+
+export async function deleteBusRoute(id) {
+  return apiCall(`/admin/bus-routes/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function updateBusRoute(id, busData) {
+  return apiCall(`/admin/bus-routes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(busData),
+  });
+}
+
+/**
+ * Cancellation Approval APIs
+ */
+
 export async function getCancellationRequests() {
-  try {
-    return await apiCall(`/admin/cancellation-requests`, {
-      method: 'GET',
-    });
-  } catch (error) {
-    console.error('Error fetching cancellation requests:', error);
-    throw new Error(error.message || 'Failed to fetch cancellation requests');
-  }
+  return apiCall('/admin/cancellation-requests');
 }
 
-// Process cancellation request (admin)
-export async function processCancellationRequest(id, action, adminUsername) {
-  try {
-    return await apiCall(`/admin/process-cancellation/${id}`, {
-      method: 'POST',
-      body: JSON.stringify({ action, adminUsername }),
-    });
-  } catch (error) {
-    console.error('Error processing cancellation request:', error);
-    throw new Error(error.message || 'Failed to process cancellation request');
-  }
+export async function hodApproveCancellation(id) {
+  return apiCall(`/admin/hod-approve-cancellation`, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+}
+
+export async function hodDeclineCancellation(id) {
+  return apiCall(`/admin/hod-decline-cancellation`, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+}
+
+export async function principalApproveCancellation(id) {
+  return apiCall(`/admin/principal-approve-cancellation`, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+}
+
+export async function principalDeclineCancellation(id) {
+  return apiCall(`/admin/principal-decline-cancellation`, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+}
+
+export async function adminApproveCancellation(id) {
+  return apiCall(`/admin/admin-approve-cancellation`, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+}
+
+export async function adminDeclineCancellation(id) {
+  return apiCall(`/admin/admin-decline-cancellation`, {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
+}
+
+// Notifications API
+export async function getNotifications() {
+  return apiCall(`/notifications`);
+}
+
+export async function createNotification(notificationData) {
+  return apiCall(`/notifications`, {
+    method: "POST",
+    body: JSON.stringify(notificationData),
+  });
+}
+
+export async function deleteNotification(id) {
+  return apiCall(`/notifications/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// System Settings API
+export async function getSystemSettings() {
+  return apiCall(`/student/system-settings`);
+}
+
+export async function getAdminSettings() {
+  return apiCall(`/admin/settings`);
+}
+
+export async function updateSystemSetting(key, value) {
+  return apiCall(`/admin/update-setting`, {
+    method: "POST",
+    body: JSON.stringify({ key, value }),
+  });
 }

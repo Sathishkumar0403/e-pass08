@@ -1,659 +1,498 @@
-
 import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import Razorpay from "razorpay";
+import crypto from "crypto";
 
 const router = express.Router();
-
-// Resolve module directory early for path usage below
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Database connection configuration
-const dbConfig = {
-  // Use the backend-local SQLite file to match app.js
-  filename: path.join(__dirname, '..', 'buspass.sqlite'),
-  driver: sqlite3.Database
-};
-
-// Log the database file path for debugging
-console.log('Database path:', dbConfig.filename);
-
-// Check if database file exists
-if (!fs.existsSync(dbConfig.filename)) {
-  console.error('Database file not found at:', dbConfig.filename);
-  // Create the database directory if it doesn't exist
-  const dbDir = path.dirname(dbConfig.filename);
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+// Helper to get Razorpay instance
+function getRazorpayInstance() {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keyId || !keySecret) {
+    throw new Error('Razorpay keys not configured.');
   }
-  console.log('Created database directory:', dbDir);
-  console.error('Please run the database initialization script first!');
-  process.exit(1);
+  return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
-// Helper function to get database connection
-async function getDb() {
-  try {
-    return await open({
-      ...dbConfig,
-      mode: sqlite3.OPEN_READWRITE
-    });
-  } catch (error) {
-    console.error('Failed to connect to database:', error);
-    throw new Error('Database connection failed');
-  }
-}
+// =============================
+// Cancellation Routes
+// =============================
 
 router.post("/request-cancellation", async (req, res) => {
-  let db;
   try {
-    console.log('Received cancellation request:', req.body);
-
     const { regNo, reason } = req.body || {};
-    if (!regNo) {
-      return res.status(400).json({
-        error: "Registration number is required",
-        receivedData: req.body
-      });
-    }
+    if (!regNo) return res.status(400).json({ error: "Registration number is required" });
 
-    // Connect to DB
-    try {
-      db = await getDb();
-      console.log('Database connection established');
-    } catch (dbError) {
-      console.error('Database connection error:', dbError);
-      return res.status(500).json({
-        error: "Failed to connect to database",
-        details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
-      });
-    }
+    const collection = req.mongo.collection("student_applications");
+    const student = await collection.findOne({ regNo });
 
-    // Use a transaction for consistency
-    await db.run('BEGIN IMMEDIATE');
+    if (!student) return res.status(404).json({ error: "Student not found" });
+    if (student.status !== 'approved') return res.status(400).json({ error: "Only approved passes can be cancelled" });
+    if (student.cancelled) return res.status(400).json({ error: "Pass is already cancelled" });
+    if (student.cancellation_requested) return res.status(400).json({ error: "Cancellation already requested" });
 
-    // Fetch student
-    const student = await db.get(
-      `SELECT 
-        id,
-        status,
-        cancelled,
-        cancellation_requested,
-        cancellation_reason,
-        cancellation_requested_at,
-        cancelled_at
-       FROM student_applications WHERE regNo = ?`,
-      [regNo]
+    await collection.updateOne(
+      { regNo },
+      { 
+        $set: { 
+          cancellation_requested: 1,
+          cancellation_reason: reason || 'No reason provided',
+          cancellation_requested_at: new Date().toISOString(),
+          hod_approval: 'pending',
+          principal_approval: 'pending',
+          updatedAt: new Date().toISOString()
+        } 
+      }
     );
 
-    if (!student) {
-      await db.run('ROLLBACK');
-      return res.status(404).json({
-        error: `Student with registration number ${regNo} not found`,
-        regNo
-      });
-    }
-
-    if (student.status !== 'approved') {
-      await db.run('ROLLBACK');
-      return res.status(400).json({
-        error: "Only approved passes can be cancelled",
-        currentStatus: student.status
-      });
-    }
-
-    if (student.cancelled) {
-      await db.run('ROLLBACK');
-      return res.status(400).json({
-        error: "Pass is already cancelled",
-        cancelledAt: student.cancelled_at
-      });
-    }
-
-    if (student.cancellation_requested) {
-      await db.run('ROLLBACK');
-      return res.status(400).json({
-        error: "Cancellation already requested",
-        requestedAt: student.cancellation_requested_at
-      });
-    }
-
-    // Perform update
-    const result = await db.run(
-      `UPDATE student_applications SET
-         cancellation_requested = 1,
-         cancellation_reason = ?,
-         cancellation_requested_at = CURRENT_TIMESTAMP,
-         updatedAt = CURRENT_TIMESTAMP
-       WHERE regNo = ?`,
-      [reason || 'No reason provided', regNo]
-    );
-
-    if (result.changes === 0) {
-      await db.run('ROLLBACK');
-      return res.status(500).json({ error: "No records were updated" });
-    }
-
-    await db.run('COMMIT');
-
-    return res.json({
-      message: "Cancellation request submitted successfully",
-      timestamp: new Date().toISOString()
-    });
+    return res.json({ message: "Cancellation request submitted successfully" });
   } catch (err) {
-    try {
-      if (db) await db.run('ROLLBACK');
-    } catch {}
-    console.error("Error in request-cancellation:", {
-      message: err.message,
-      stack: err.stack,
-      body: req.body,
-      regNo: req.body?.regNo
-    });
-    return res.status(500).json({
-      error: "Failed to process cancellation request",
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  } finally {
-    if (db) await db.close();
+    console.error("Error in request-cancellation:", err);
+    return res.status(500).json({ error: "Failed to process cancellation request" });
   }
 });
 
-// =============================
-// Check cancellation status
-// =============================
 router.get("/cancellation-status/:regNo", async (req, res) => {
-  let db;
   try {
     const { regNo } = req.params;
-    console.log('Checking cancellation status for:', regNo);
+    if (!regNo) return res.status(400).json({ error: "Registration number is required" });
 
-    if (!regNo) {
-      return res.status(400).json({ 
-        error: "Registration number is required",
-        receivedParams: req.params
-      });
-    }
-
-    // Get database connection
-    db = await getDb();
-    
-    // Check if the student exists and get cancellation status
-    const result = await db.get(
-      `SELECT 
-        cancellation_requested as cancellationRequested,
-        cancellation_reason as cancellationReason,
-        cancelled as isCancelled,
-        cancelled_at as cancelledAt,
-        cancelled_by as cancelledBy
-      FROM student_applications 
-      WHERE regNo = ?`,
-      [regNo]
-    );
-
-    console.log('Cancellation status result:', result);
-
-    if (!result) {
-      return res.status(404).json({ 
-        error: "Student not found",
-        regNo
-      });
-    }
+    const student = await req.mongo.collection("student_applications").findOne({ regNo });
+    if (!student) return res.status(404).json({ error: "Student not found" });
 
     res.json({
       success: true,
-      cancellationRequested: !!result.cancellationRequested,
-      cancellationReason: result.cancellationReason || null,
-      isCancelled: !!result.isCancelled,
-      cancelledAt: result.cancelledAt || null,
-      cancelledBy: result.cancelledBy || null
+      cancellationRequested: !!student.cancellation_requested,
+      cancellationReason: student.cancellation_reason || null,
+      isCancelled: !!student.cancelled,
+      cancelledAt: student.cancelled_at || null,
+      cancelledBy: student.cancelled_by || null
     });
   } catch (err) {
-    console.error("Error in cancellation-status endpoint:", {
-      message: err.message,
-      stack: err.stack,
-      params: req.params
-    });
-    
-    res.status(500).json({ 
-      error: "Failed to check cancellation status",
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  } finally {
-    // Close the database connection
-    if (db) {
-      try {
-        await db.close();
-      } catch (closeErr) {
-        console.error('Error closing database connection:', closeErr);
-      }
-    }
+    console.error("Error in cancellation-status:", err);
+    res.status(500).json({ error: "Failed to check cancellation status" });
   }
 });
 
 // =============================
-// Get student details by regNo (for verification)
+// System Settings
 // =============================
+
+router.get("/system-settings", async (req, res) => {
+  try {
+    const settings = await req.mongo.collection("system_settings").find({}).toArray();
+    const settingsMap = {};
+    settings.forEach(s => settingsMap[s.key] = s.value);
+    res.json(settingsMap);
+  } catch (err) {
+    console.error("Error fetching settings:", err);
+    res.status(500).json({ error: "Failed to fetch settings" });
+  }
+});
+
+// =============================
+// Student Details & Verification
+// =============================
+
 router.get("/details/:regNo", async (req, res) => {
   try {
-    const db = req.db;
     const { regNo } = req.params;
-    if (!regNo) {
-      return res.status(400).json({ error: "Registration number required" });
-    }
-    const student = await db.get(
-      "SELECT name, regNo, route, validity, photo FROM student_applications WHERE regNo = ?",
-      [regNo]
-    );
-    if (!student) {
-      return res.status(404).json({ error: "Student not found" });
-    }
-    // Map validity to 'Valid Till' format if needed
-    student.validTill = student.validity;
-    delete student.validity;
-    res.json(student);
+    const student = await req.mongo.collection("student_applications").findOne({ regNo });
+    if (!student) return res.status(404).json({ error: "Student not found" });
+    
+    // Map for frontend
+    const result = { ...student, validTill: student.validity };
+    res.json(result);
   } catch (err) {
-    console.error("Error fetching student details:", err);
-    res.status(500).json({ error: "Failed to fetch student details" });
+    console.error("Error fetching details:", err);
+    res.status(500).json({ error: "Failed to fetch details" });
   }
 });
 
-// =============================
-// Get bus pass data by regNo (for visual display)
-// =============================
+router.get("/verify-pass/:regNo", async (req, res) => {
+  try {
+    const { regNo } = req.params;
+    const student = await req.mongo.collection("student_applications").findOne({ regNo });
+    if (!student) return res.status(404).json({ error: "Pass not found" });
+
+    // Handle branchYear parsing
+    let branch = '', year = '';
+    if (student.branchYear) {
+      const parts = student.branchYear.split(/[-\/\s]+/);
+      if (parts.length >= 2) {
+        year = parts[parts.length - 1];
+        branch = parts.slice(0, -1).join(' ');
+      } else branch = student.branchYear;
+    }
+
+    res.json({
+      ...student,
+      branch,
+      year,
+      validTill: student.validity,
+      cancelled: !!student.cancelled
+    });
+  } catch (err) {
+    console.error("Error verifying pass:", err);
+    res.status(500).json({ error: "Failed to verify pass" });
+  }
+});
+
 router.get("/pass/:regNo", async (req, res) => {
   try {
-    const db = req.db;
     const { regNo } = req.params;
-    if (!regNo) {
-      return res.status(400).json({ error: "Registration number required" });
-    }
-    const student = await db.get(
-      "SELECT name, regNo, route, validity, photo, qrData, branchYear, dob, mobile, college, busNo, userType, passNo FROM student_applications WHERE regNo = ? AND status = 'approved'",
-      [regNo]
-    );
-    if (!student) {
-      return res.status(404).json({ error: "Student not found or not approved" });
-    }
-    
-    // Parse QR data if available
+    const student = await req.mongo.collection("student_applications").findOne({ regNo, status: 'approved' });
+    if (!student) return res.status(404).json({ error: "Student not found or not approved" });
+
     let qrData = null;
-    
     if (student.qrData) {
-      try {
-        qrData = JSON.parse(student.qrData);
-      } catch (e) {
-        console.error("Error parsing QR data:", e);
-      }
+      try { qrData = JSON.parse(student.qrData); } catch (e) { console.error("QR Parse Error"); }
     }
-    
-    // Return formatted data for bus pass display
-    const passData = {
-      name: student.name,
-      regNo: student.regNo,
-      route: student.route,
-      validity: student.validity,
+
+    let branch = '', year = '';
+    if (student.branchYear) {
+      const parts = student.branchYear.split(/[-\/\s]+/);
+      if (parts.length >= 2) {
+        year = parts[parts.length - 1];
+        branch = parts.slice(0, -1).join(' ');
+      } else branch = student.branchYear;
+    }
+
+    res.json({
+      ...student,
+      branch,
+      year,
       validTill: student.validity,
-      photo: student.photo,
-      branchYear: student.branchYear,
-      dob: student.dob,
-      mobile: student.mobile,
-      college: student.college || '',
-      busNo: student.busNo || '',
-      userType: student.userType || 'student',
-      passNo: student.passNo || '',
-      qrData: qrData
-    };
-    
-    res.json(passData);
+      qrData
+    });
   } catch (err) {
-    console.error("Error fetching bus pass data:", err);
-    res.status(500).json({ error: "Failed to fetch bus pass data" });
+    console.error("Error fetching pass:", err);
+    res.status(500).json({ error: "Failed to fetch pass data" });
   }
 });
 
-// (moved __filename/__dirname definition to the top)
+// =============================
+// Application & Login
+// =============================
 
-// =============================
-// Ensure uploads directory exists
-// =============================
 const uploadDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// =============================
-// Multer setup
-// =============================
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix =
-      Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `${uniqueSuffix}-${file.originalname}`);
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed"));
-    }
-  },
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only images allowed"));
+  }
 });
 
-// =============================
-// Apply for bus pass
-// =============================
-router.post(
-  "/apply",
-  upload.fields([
-    { name: "photo", maxCount: 1 },
-    { name: "aadharPhoto", maxCount: 1 },
-    { name: "collegeIdPhoto", maxCount: 1 },
-  ]),
-  async (req, res) => {
-    try {
-      // Check DB connection
-      if (!req.db) {
-        console.error("Database connection not available");
-        return res
-          .status(500)
-          .json({ error: "Database connection failed" });
-      }
+router.post("/apply", upload.fields([
+  { name: "photo", maxCount: 1 },
+  { name: "aadharPhoto", maxCount: 1 },
+  { name: "collegeIdPhoto", maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const data = req.body;
+    const files = req.files || {};
 
-      const db = req.db;
-      const {
-        name,
-        dob,
-        regNo,
-        branchYear,
-        mobile,
-        parentMobile,
-        address,
-        route,
-        validity,
-        aadharNumber,
-        college,    // NEW
-        busNo,      // NEW (from dropdown)
-        userType    // NEW (student/staff, toggle)
-      } = req.body;
+    // Validate
+    const required = ['name', 'fatherName', 'dob', 'regNo', 'year', 'mobile', 'parentMobile', 'address', 'route', 'department', 'college', 'aadharNumber'];
+    const missing = required.filter(f => !data[f]);
+    if (missing.length > 0) return res.status(400).json({ error: `Missing: ${missing.join(', ')}` });
 
-      // Validate required fields
-      if (
-        !name ||
-        !dob ||
-        !regNo ||
-        !branchYear ||
-        !mobile ||
-        !parentMobile ||
-        !address ||
-        !route ||
-        !validity
-      ) {
-        return res
-          .status(400)
-          .json({ error: "All required fields must be provided" });
-      }
+    const collection = req.mongo.collection("student_applications");
+    const existing = await collection.findOne({ regNo: data.regNo });
+    if (existing) return res.status(400).json({ error: "Registration number already exists" });
 
-      // Validate mobile numbers
-      const mobileRegex = /^[6-9]\d{9}$/;
-      if (
-        !mobileRegex.test(mobile) ||
-        !mobileRegex.test(parentMobile)
-      ) {
-        return res
-          .status(400)
-          .json({ error: "Invalid mobile number format" });
-      }
+    if (!files.photo || !files.collegeIdPhoto) return res.status(400).json({ error: "Photo and College ID are required" });
 
-      // Check duplicate registration number
-      const existingApp = await db.get(
-        "SELECT id FROM student_applications WHERE regNo = ?",
-        [regNo]
-      );
-      if (existingApp) {
-        return res.status(400).json({
-          error: "Application with this registration number already exists",
-        });
-      }
+    const photo = `/uploads/${files.photo[0].filename}`;
+    const aadharPhoto = files.aadharPhoto ? `/uploads/${files.aadharPhoto[0].filename}` : null;
+    const collegeIdPhoto = `/uploads/${files.collegeIdPhoto[0].filename}`;
 
-      // Handle uploaded files
-      const files = req.files || {};
-      if (!files.photo || !files.aadharPhoto || !files.collegeIdPhoto) {
-        return res.status(400).json({
-          error: "All required images must be uploaded",
-          details: {
-            photo: !!files.photo,
-            aadharPhoto: !!files.aadharPhoto,
-            collegeIdPhoto: !!files.collegeIdPhoto,
-          },
-        });
-      }
+    const now = new Date();
+    const passNo = `BP-${data.regNo}-${now.getTime()}`;
+    
+    const validityDate = new Date();
+    validityDate.setFullYear(validityDate.getFullYear() + 1);
+    const validity = validityDate.toISOString().split('T')[0];
 
-      // File paths (relative for frontend use)
-      const photo = `/uploads/${files.photo[0].filename}`;
-      const aadharPhoto = `/uploads/${files.aadharPhoto[0].filename}`;
-      const collegeIdPhoto = `/uploads/${files.collegeIdPhoto[0].filename}`;
+    const application = {
+      ...data,
+      photo,
+      aadharPhoto,
+      collegeIdPhoto,
+      validity,
+      passNo,
+      status: 'pending',
+      branchYear: `${data.department} - ${data.year}`,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      cancellation_requested: 0,
+      cancelled: 0,
+      payment_status: 'pending'
+    };
 
-      // Generate pass number (should be unique and consistent if user applies again with same regNo)
-      // Example: 'BP-REGNO-YYYYMMDDHHmmss' for demo, alternatively, use database id for stable serial
-      const now = new Date();
-      const pad = (n) => n.toString().padStart(2, '0');
-      const passNo =
-        'BP-' +
-        regNo +
-        '-' +
-        now.getFullYear().toString() +
-        pad(now.getMonth() + 1) +
-        pad(now.getDate()) +
-        pad(now.getHours()) +
-        pad(now.getMinutes()) +
-        pad(now.getSeconds());
-
-      // Save application in DB
-      await db.run(
-        `INSERT INTO student_applications (
-          name, dob, regNo, branchYear, mobile, parentMobile, 
-          address, route, validity, aadharNumber, photo, 
-          aadharPhoto, collegeIdPhoto, status, 
-          college, busNo, userType, passNo
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)` ,
-        [
-          name,
-          dob,
-          regNo,
-          branchYear,
-          mobile,
-          parentMobile,
-          address,
-          route,
-          validity,
-          aadharNumber,
-          photo,
-          aadharPhoto,
-          collegeIdPhoto,
-          college || '',
-          busNo || '',
-          userType || 'student',
-          passNo
-        ]
-      );
-
-      res.json({
-        message: "Application submitted successfully",
-        status: "pending",
-      });
-    } catch (err) {
-      console.error("Error submitting application:", err);
-
-      if (err.code === "SQLITE_CONSTRAINT") {
-        res.status(400).json({
-          error: "Database constraint error. Please check your data.",
-        });
-      } else {
-        res
-          .status(500)
-          .json({ error: err.message || "Failed to submit application" });
-      }
-    }
+    const result = await collection.insertOne(application);
+    res.json({ message: "Application submitted successfully", id: result.insertedId });
+  } catch (err) {
+    console.error("Apply Error:", err);
+    res.status(500).json({ error: "Failed to submit application" });
   }
-);
+});
 
-// =============================
-// Student login
-// =============================
 router.post("/login", async (req, res) => {
   try {
-    const db = req.db;
     const { regNo, dob } = req.body;
+    if (!regNo || !dob) return res.status(400).json({ error: "RegNo and DOB required" });
 
-    if (!regNo || !dob) {
-      return res
-        .status(400)
-        .json({ error: "Registration number and DOB are required" });
+    const student = await req.mongo.collection("student_applications").findOne({ regNo, dob });
+    if (!student) return res.status(404).json({ error: "Student not found" });
+
+    const { aadharNumber, aadharPhoto, collegeIdPhoto, ...safeStudent } = student;
+    safeStudent.validTill = student.validity;
+
+
+
+    // Split branchYear
+    if (student.branchYear) {
+      const parts = student.branchYear.split(/[-\/\s]+/);
+      safeStudent.year = parts.length >= 2 ? parts[parts.length - 1] : '';
+      safeStudent.branch = parts.length >= 2 ? parts.slice(0, -1).join(' ') : student.branchYear;
     }
 
-    const student = await db.get(
-      "SELECT * FROM student_applications WHERE regNo = ? AND dob = ?",
-      [regNo, dob]
+    res.json(safeStudent);
+  } catch (err) {
+    console.error("Login Error:", err);
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
+router.post("/upload-fees-bill", upload.single("feesBill"), async (req, res) => {
+  try {
+    const { regNo } = req.body;
+    if (!regNo || !req.file) return res.status(400).json({ error: "RegNo and file required" });
+
+    const feesBillPhoto = `/uploads/${req.file.filename}`;
+    const result = await req.mongo.collection("student_applications").updateOne(
+      { regNo },
+      { $set: { feesBillPhoto, updatedAt: new Date().toISOString() } }
     );
 
-    if (student) {
-      // Remove sensitive info
-      const {
-        aadharNumber,
-        aadharPhoto,
-        collegeIdPhoto,
-        ...safeStudent
-      } = student;
-      // Ensure props are always present for frontend display
-      safeStudent.college = student.college || '';
-      safeStudent.busNo = student.busNo || '';
-      safeStudent.userType = student.userType || 'student';
-      safeStudent.passNo = student.passNo || '';
-      res.json(safeStudent);
-    } else {
-      res.status(404).json({ error: "Student not found. Check credentials." });
-    }
+    if (result.matchedCount === 0) return res.status(404).json({ error: "Student not found" });
+    res.json({ message: "Uploaded successfully", filePath: feesBillPhoto });
   } catch (err) {
-    console.error("Error in student login:", err);
-    res.status(500).json({ error: "Login failed. Please try again." });
+    console.error("Upload Error:", err);
+    res.status(500).json({ error: "Upload failed" });
   }
 });
 
 // =============================
-// Upload fees bill
+// Payment Routes
 // =============================
-router.post(
-  "/upload-fees-bill",
-  upload.single("feesBill"),
-  async (req, res) => {
-    try {
-      if (!req.db) {
-        console.error("Database connection not available");
-        return res
-          .status(500)
-          .json({ error: "Database connection failed" });
-      }
 
-      const db = req.db;
-      const { regNo } = req.body;
-
-      if (!regNo) {
-        return res.status(400).json({ error: "Registration number is required" });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ error: "Fees bill photo is required" });
-      }
-
-      const feesBillPhoto = `/uploads/${req.file.filename}`;
-
-      const result = await db.run(
-        "UPDATE student_applications SET feesBillPhoto = ? WHERE regNo = ?",
-        [feesBillPhoto, regNo]
-      );
-
-      if (result.changes === 0) {
-        return res.status(404).json({ error: "Student not found." });
-      }
-
-      res.json({
-        message: "Fees bill uploaded successfully",
-        filePath: feesBillPhoto,
-      });
-    } catch (err) {
-      console.error("Error uploading fees bill:", err);
-      res.status(500).json({ error: "Failed to upload fees bill" });
-    }
-  }
-);
-
-// =============================
-// Serve uploaded images
-// =============================
-router.get("/uploads/:filename", (req, res) => {
+router.get('/get-fee/:route', async (req, res) => {
   try {
-    const { filename } = req.params;
-    const imagePath = path.join(uploadDir, filename);
-    
-    console.log('Requested image:', filename);
-    console.log('Image path:', imagePath);
-    
-    if (!fs.existsSync(imagePath)) {
-      console.log('Image not found at path:', imagePath);
-      return res.status(404).json({ error: "Image not found" });
+    const { route } = req.params;
+    const decodedRoute = decodeURIComponent(route);
+    const collection = req.mongo.collection("route_fees");
+
+    // Strategy 1: exact route match (any is_active value)
+    let feeRecord = await collection.findOne({ route: decodedRoute });
+
+    // Strategy 2: case-insensitive exact match
+    if (!feeRecord) {
+      feeRecord = await collection.findOne({
+        route: { $regex: new RegExp(`^${decodedRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
     }
-    
-    // Set proper headers for CORS and caching
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    
-    res.sendFile(imagePath);
+
+    // Strategy 3: match by destination part of the route string
+    if (!feeRecord && decodedRoute.includes(' - ')) {
+      // e.g. student route "AERI - Krishnagiri, New Bus Station"
+      // fee route "College - Krishnagiri, New Bus Station Inner"
+      // extract everything after " - " and do fuzzy match
+      const destinationPart = decodedRoute.split(' - ').slice(1).join(' - ').trim();
+      const destWords = destinationPart.split(/[,\s]+/).filter(w => w.length > 3);
+
+      // Find all active fees and pick the one whose destination matches best
+      const allFees = await collection.find({}).toArray();
+      for (const fee of allFees) {
+        const feeDestination = (fee.to || fee.route?.split(' - ').slice(1).join(' - ') || '').toLowerCase();
+        const matchCount = destWords.filter(word => feeDestination.includes(word.toLowerCase())).length;
+        if (matchCount >= Math.min(2, destWords.length)) {
+          feeRecord = fee;
+          break;
+        }
+      }
+    }
+
+    // Strategy 4: search within route field
+    if (!feeRecord) {
+      const keywords = decodedRoute.split(/[\s,]+/).filter(w => w.length > 4);
+      if (keywords.length > 0) {
+        const allFees = await collection.find({}).toArray();
+        for (const fee of allFees) {
+          const routeStr = (fee.route || '').toLowerCase();
+          const matchCount = keywords.filter(kw => routeStr.includes(kw.toLowerCase())).length;
+          if (matchCount >= Math.min(2, keywords.length)) {
+            feeRecord = fee;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!feeRecord) return res.status(404).json({ error: "Fee not configured for this route. Please contact admin." });
+    res.json({ ...feeRecord, id: feeRecord._id.toString(), fee_amount: Number(feeRecord.fee_amount) });
   } catch (err) {
-    console.error("Error serving image:", err);
-    res.status(500).json({ error: "Failed to serve image" });
+    console.error("Fee Fetch Error:", err);
+    res.status(500).json({ error: "Failed to fetch fee" });
   }
 });
 
-// Health check route for backend connectivity
-router.get('/ping', (req, res) => {
-  res.json({ status: 'ok', message: 'Student API is reachable' });
-});
+router.post('/create-payment-order', async (req, res) => {
+  try {
+    const { regNo, amount } = req.body;
+    const student = await req.mongo.collection("student_applications").findOne({ regNo });
+    if (!student) return res.status(404).json({ error: "Student not found" });
 
-// =============================
-// Multer / general error handler
-// =============================
-router.use((error, req, res, next) => {
-  if (error instanceof multer.MulterError) {
-    if (error.code === "LIMIT_FILE_SIZE") {
-      return res
-        .status(400)
-        .json({ error: "File size too large. Max size is 10MB." });
+    // Determine the fee amount with multiple fallbacks
+    let finalAmount = Number(amount); // frontend-provided amount
+
+    if (!finalAmount || finalAmount <= 0) {
+      // Fallback 1: student record has fee_amount stored
+      if (student.fee_amount) {
+        finalAmount = Number(student.fee_amount);
+      }
+      // Fallback 2: look up route fees with fuzzy matching
+      else if (student.route) {
+        const routeFees = await req.mongo.collection("route_fees").find({}).toArray();
+        const studentRoute = student.route.toLowerCase();
+        const destPart = studentRoute.includes(' - ')
+          ? studentRoute.split(' - ').slice(1).join(' - ').trim()
+          : studentRoute;
+        const destWords = destPart.split(/[,\s]+/).filter(w => w.length > 3);
+
+        let bestFee = null;
+        for (const fee of routeFees) {
+          const feeRoute = (fee.route || '').toLowerCase();
+          const feeDest = (fee.to || feeRoute).toLowerCase();
+
+          // Try exact match first
+          if (feeRoute === studentRoute) { bestFee = fee; break; }
+
+          // Try destination keyword match
+          const matchCount = destWords.filter(w => feeDest.includes(w)).length;
+          if (matchCount >= Math.min(2, destWords.length)) {
+            bestFee = fee;
+            break;
+          }
+        }
+        if (bestFee) finalAmount = Number(bestFee.fee_amount);
+        else return res.status(400).json({ error: "Fee not configured for your route. Please contact admin." });
+      } else {
+        return res.status(400).json({ error: "Amount is required" });
+      }
     }
-    return res.status(400).json({ error: "File upload error" });
-  }
 
-  if (error.message === "Only image files are allowed") {
-    return res.status(400).json({ error: "Only image files are allowed" });
-  }
+    if (!finalAmount || finalAmount <= 0) {
+      return res.status(400).json({ error: "Invalid fee amount. Please contact admin." });
+    }
 
-  console.error("Student route error:", error);
-  res.status(500).json({ error: "Internal server error" });
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) {
+      return res.status(500).json({ error: "Razorpay keys not configured on server." });
+    }
+
+    const razorpay = getRazorpayInstance();
+    const order = await razorpay.orders.create({
+      amount: Math.round(finalAmount * 100), // rupees to paise
+      currency: "INR",
+      receipt: `receipt_${regNo}_${Date.now()}`
+    });
+
+    await req.mongo.collection("student_applications").updateOne(
+      { regNo },
+      { $set: { razorpay_order_id: order.id, fee_amount: finalAmount, updatedAt: new Date().toISOString() } }
+    );
+
+    res.json({
+      keyId,
+      orderId: order.id,
+      amount: finalAmount,   // rupees (frontend will multiply by 100 for Razorpay options)
+      currency: order.currency,
+      receipt: order.receipt
+    });
+  } catch (err) {
+    console.error("Payment Order Error:", err);
+    res.status(500).json({ error: err.message || "Failed to create payment order" });
+  }
+});
+
+router.post('/verify-payment', async (req, res) => {
+
+
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, regNo } = req.body;
+    
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const generated_signature = crypto.createHmac('sha256', keySecret)
+      .update(razorpay_order_id + "|" + razorpay_payment_id)
+      .digest('hex');
+
+    if (generated_signature === razorpay_signature) {
+      await req.mongo.collection("student_applications").updateOne(
+        { regNo },
+        { 
+          $set: { 
+            payment_status: 'paid',
+            payment_id: razorpay_payment_id,
+            payment_date: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          } 
+        }
+      );
+      res.json({ success: true, message: "Payment verified" });
+    } else {
+      res.status(400).json({ success: false, message: "Signature mismatch" });
+    }
+  } catch (err) {
+    console.error("Verification Error:", err);
+    res.status(500).json({ error: "Failed to verify" });
+  }
+});
+
+router.get('/payment-status/:regNo', async (req, res) => {
+  try {
+    const { regNo } = req.params;
+    const student = await req.mongo.collection("student_applications").findOne({ regNo });
+    if (!student) return res.status(404).json({ error: "Student not found" });
+
+    res.json({
+      payment_status: student.payment_status || 'pending',
+      payment_id: student.payment_id || null,
+      payment_amount: student.fee_amount || null,
+      payment_date: student.payment_date || null
+    });
+  } catch (err) {
+    console.error("Payment Status Error:", err);
+    res.status(500).json({ error: "Failed to fetch payment status" });
+  }
 });
 
 export default router;
+

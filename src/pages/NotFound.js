@@ -1,59 +1,85 @@
 import React from 'react';
-import { FaHome } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import { FaHome, FaArrowLeft } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
 function NotFound() {
   return (
     <div style={{
-      minHeight: '60vh',
+      minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 100%)',
+      backgroundColor: '#f8fafc',
+      fontFamily: "'Outfit', sans-serif"
     }}>
-      <div style={{
-        background: '#fff',
-        borderRadius: 18,
-        boxShadow: '0 8px 32px rgba(30, 58, 138, 0.10), 0 1.5px 6px rgba(30,58,138,0.06)',
-        border: '2px solid #dbeafe',
-        padding: '36px 30px 30px 30px',
-        maxWidth: 400,
-        width: '100%',
-        textAlign: 'center',
-        animation: 'fadeIn 0.7s cubic-bezier(.39,.575,.565,1) both',
-      }}>
-        <h2 style={{ color: '#1e3a8a', fontWeight: 800, fontSize: '2rem', marginBottom: 8, position: 'relative' }}>
-          404
-          <span style={{
-            display: 'block',
-            margin: '10px auto 0 auto',
-            width: 60,
-            height: 4,
-            borderRadius: 2,
-            background: 'linear-gradient(90deg, #6366f1 0%, #38bdf8 100%)',
-          }} />
-        </h2>
-        <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: 24 }}>
-          Oops! The page you are looking for does not exist.
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{
+          textAlign: 'center',
+          maxWidth: '480px',
+          padding: '2rem'
+        }}
+      >
+        <h1 style={{
+          fontSize: '8rem',
+          fontWeight: 900,
+          margin: 0,
+          background: 'linear-gradient(135deg, #7c3aed 0%, #0ea5e9 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          lineHeight: 1
+        }}>404</h1>
+        <h2 style={{
+          fontSize: '2rem',
+          fontWeight: 800,
+          color: '#0f172a',
+          margin: '1rem 0'
+        }}>Page Not Found</h2>
+        <p style={{
+          color: '#64748b',
+          fontSize: '1.125rem',
+          lineHeight: 1.6,
+          marginBottom: '2.5rem'
+        }}>
+          The route you're looking for has been moved or doesn't exist in our intelligent transport system.
         </p>
-        <a href="/" style={{
-          background: 'linear-gradient(90deg, #6366f1 0%, #38bdf8 100%)',
-          color: '#fff',
-          padding: '10px 32px',
-          borderRadius: 8,
-          fontWeight: 700,
-          fontSize: '1rem',
-          textDecoration: 'none',
-          boxShadow: '0 2px 8px rgba(30, 58, 138, 0.08)',
-          transition: 'background 0.2s, color 0.2s, transform 0.15s',
-          display: 'inline-block',
-        }}><span style={{display:'inline-flex',alignItems:'center'}}><FaHome style={{ marginRight: 8, verticalAlign: 'middle' }} />Go Home</span></a>
-      </div>
-      <style>{`
-        @keyframes fadeIn {
-          0% { opacity: 0; transform: translateY(30px); }
-          100% { opacity: 1; transform: none; }
-        }
-      `}</style>
+
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+          <Link to="/" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '1rem 2rem',
+            background: '#0f172a',
+            color: 'white',
+            borderRadius: '14px',
+            textDecoration: 'none',
+            fontWeight: 700,
+            boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1)'
+          }}>
+            <FaHome /> Back Home
+          </Link>
+          <button
+            onClick={() => window.history.back()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '1rem 2rem',
+              background: 'white',
+              color: '#475569',
+              borderRadius: '14px',
+              border: '1px solid #e2e8f0',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <FaArrowLeft /> Go Back
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }

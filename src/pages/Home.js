@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBus, FaShieldAlt, FaQrcode, FaMobile, FaArrowRight, FaClock } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import { FaBus, FaShieldAlt, FaQrcode, FaMobile, FaArrowRight, FaClock, FaUserGraduate } from 'react-icons/fa';
 import styles from './Home.module.css';
 
 function Home() {
@@ -14,83 +15,202 @@ function Home() {
     {
       icon: FaQrcode,
       title: "Digital QR Code",
-      description: "Quick verification with scannable QR codes"
+      description: "Secure, scannable QR verification for your daily commute."
     },
     {
       icon: FaShieldAlt,
-      title: "Secure & Safe",
-      description: "Advanced security features to protect your data"
+      title: "Anti-Forgery",
+      description: "Advanced cryptographic security to prevent unauthorized pass use."
     },
     {
       icon: FaMobile,
-      title: "Mobile Friendly",
-      description: "Access your pass anywhere, anytime on your phone"
+      title: "Wallet Ready",
+      description: "Always with you on your mobile device. No physical card needed."
     },
     {
       icon: FaClock,
-      title: "Instant Approval",
-      description: "Fast processing and quick approval system"
+      title: "Fast Track",
+      description: "Instant application and automated approval workflow."
     }
   ];
 
   const stats = [
-    { number: "500+", label: "Students Served" },
-    { number: "15+", label: "Bus Routes" },
-    { number: "99%", label: "Success Rate" },
-    { number: "24/7", label: "Support" }
+    { number: "10k+", label: "Active Passes" },
+    { number: "24/7", label: "Verification" },
+    { number: "0.5s", label: "Scan Speed" },
+    { number: "100%", label: "Secure" }
   ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1
+    }
+  };
 
   return (
     <div className={styles.pageWrapper}>
+      {/* Background Decorative Elements */}
+      <div className={styles.bgGlow1}></div>
+      <div className={styles.bgGlow2}></div>
+
       {/* Hero Section */}
       <section className={styles.heroSection}>
         <div className={styles.heroContent}>
-          <div className={styles.heroText}>
+          <motion.div
+            className={styles.heroText}
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
+            <div className={styles.badge}>
+              <span className={styles.badgeDot}></span>
+              Next-Gen Transportation
+            </div>
             <h1 className={styles.heroTitle}>
-              <span className={styles.heroTitlesubtitle}>A.E.R.I</span>
-              <span className={styles.heroTitleMain}>Digital Bus Pass</span>
-              <span className={styles.heroTitleSub}>for College Students</span>
+              <span className={styles.titleGradient}> AERI Intelligent</span> <br />
+              Bus Pass System
             </h1>
             <p className={styles.heroDescription}>
-              Experience the future of student transportation with our secure, digital bus pass system.
-              Apply online, get instant approval, and travel hassle-free with QR code verification.
+              Modernizing college transit with secure digital identification.
+              Seamless application, instant verification, and smart management.
             </p>
             <div className={styles.heroButtons}>
-              <button className={styles.primaryButton} onClick={handleApply}>
-                Apply Now <FaArrowRight className={styles.buttonIcon} />
-              </button>
-              <button className={styles.secondaryButton} onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={styles.primaryButton}
+                onClick={handleApply}
+              >
+                Get Started <FaArrowRight className={styles.buttonIcon} />
+              </motion.button>
+              <button
+                className={styles.secondaryButton}
+                onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+              >
                 Learn More
               </button>
             </div>
-          </div>
-          <div className={styles.heroVisual}>
-            <div className={styles.heroCard}>
-              <div className={styles.cardHeader}>
-                <FaBus className={styles.cardIcon} />
-                <span className={styles.cardTitle}>College E-Bus Pass</span>
-              </div>
-              <div className={styles.cardContent}>
-                <div className={styles.studentInfo}>
-                  <div className={styles.studentPhoto}></div>
-                  <div className={styles.studentDetails}>
-                    <div className={styles.studentName}>Sathish</div>
-                    <div className={styles.studentReg}>REG: 2024001</div>
-                    <div className={styles.studentRoute}>Route: ACE - HOSUR</div>
+          </motion.div>
+
+          <motion.div
+            className={styles.heroVisual}
+            initial={{ opacity: 0, scale: 0.8, rotateY: 20 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+            transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+          >
+            <div className={styles.heroCardContainer}>
+              <div className={styles.floatingCard}>
+                <div className={styles.cardHeader}>
+                  <FaBus className={styles.cardIcon} />
+                  <span>Student ID</span>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.avatar}></div>
+                  <div className={styles.details}>
+                    <div className={styles.name}>student name</div>
+                    <div className={styles.id}>ID: #61766AC22UCS132</div>
+                  </div>
+                  <div className={styles.qrContainer}>
+                    <FaQrcode />
                   </div>
                 </div>
-                <div className={styles.qrPlaceholder}>
-                  <FaQrcode className={styles.qrIcon} />
-                </div>
               </div>
+              <div className={styles.cardShadow}></div>
             </div>
-          </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className={styles.featuresSection}>
+        <motion.div
+          className={styles.sectionHeader}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={itemVariants}
+        >
+          <h2 className={styles.sectionTitle}>Smart Features</h2>
+          <p className={styles.sectionSubtitle}>Everything you need for a modern commute</p>
+        </motion.div>
+
+        <motion.div
+          className={styles.featuresGrid}
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+        >
+          {features.map((feature, index) => (
+            <motion.div
+              key={index}
+              className={styles.featureCard}
+              variants={itemVariants}
+              whileHover={{ y: -10 }}
+            >
+              <div className={styles.featureIcon}>
+                <feature.icon />
+              </div>
+              <h3 className={styles.featureTitle}>{feature.title}</h3>
+              <p className={styles.featureDescription}>{feature.description}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* Portals Section */}
+      <section className={styles.portalsSection}>
+        <motion.div
+          className={styles.sectionHeader}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={itemVariants}
+        >
+          <h2 className={styles.sectionTitle}>Portals & Access</h2>
+          <p className={styles.sectionSubtitle}>Select your portal to continue</p>
+        </motion.div>
+
+        <div className={styles.portalsGrid}>
+          <motion.div
+            className={styles.portalCard}
+            whileHover={{ y: -10 }}
+            onClick={() => navigate('/student')}
+          >
+            <div className={`${styles.portalIcon} ${styles.studentIcon}`}><FaUserGraduate /></div>
+            <h3>Student Portal</h3>
+            <p>View pass status, download digital card, and pay fees.</p>
+            <button className={styles.portalBtn}>Login as Student</button>
+          </motion.div>
+
+          <motion.div
+            className={styles.portalCard}
+            whileHover={{ y: -10 }}
+            onClick={() => navigate('/admin')}
+          >
+            <div className={`${styles.portalIcon} ${styles.hodIcon}`}><FaShieldAlt /></div>
+            <h3>Official Portal</h3>
+            <p>Admin, HOD, and Principal verification & management portal.</p>
+            <button className={styles.portalBtn}>Login as Official</button>
+          </motion.div>
         </div>
       </section>
 
       {/* Stats Section */}
       <section className={styles.statsSection}>
-        <div className={styles.statsContainer}>
+        <div className={styles.statsGlass}>
           {stats.map((stat, index) => (
             <div key={index} className={styles.statItem}>
               <div className={styles.statNumber}>{stat.number}</div>
@@ -100,46 +220,25 @@ function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className={styles.featuresSection}>
-        <div className={styles.featuresContainer}>
-          <div className={styles.featuresHeader}>
-            <h2 className={styles.featuresTitle}>Why Choose Our Digital Bus Pass?</h2>
-            <p className={styles.featuresDescription}>
-              We've revolutionized student transportation with cutting-edge technology and user-friendly design.
-            </p>
-          </div>
-          <div className={styles.featuresGrid}>
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <div key={index} className={styles.featureCard}>
-                  <div className={styles.featureIcon}>
-                    <Icon />
-                  </div>
-                  <h3 className={styles.featureTitle}>{feature.title}</h3>
-                  <p className={styles.featureDescription}>{feature.description}</p>
-                </div>
-              );
-            })}
-          </div>
+      {/* CTA Section */}
+      <section className={styles.ctaSection}>
+        <div className={styles.ctaCard}>
+          <h2 className={styles.ctaTitle}>Ready to modernize your travel?</h2>
+          <p className={styles.ctaSubtitle}>Students can log in to check their bus pass status and manage their travel pass.</p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className={styles.ctaButton}
+            onClick={handleApply}
+          >
+            Apply for E-Pass <FaArrowRight />
+          </motion.button>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className={styles.ctaSection}>
-        <div className={styles.ctaContainer}>
-          <div className={styles.ctaContent}>
-            <h2 className={styles.ctaTitle}>Ready to Apply?</h2>
-            <p className={styles.ctaDescription}>
-              Get your digital bus pass in minutes. Click below to start your application.
-            </p>
-            <button className={styles.ctaButton} onClick={handleApply}>
-              Start Your Application <FaArrowRight className={styles.buttonIcon} />
-            </button>
-          </div>
-        </div>
-      </section>
+      <footer className={styles.footer}>
+        <p>&copy; 2026 E-Bus Pass. Intelligent Transportation solutions.</p>
+      </footer>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import './VerifyStudent.css';
+import { motion } from 'framer-motion';
+import { FaSpinner, FaIdCard, FaUser, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { getStudentDetails } from '../utils/api';
+import styles from './VerifyPass.module.css'; // Reuse existing verification styles for consistency
 
 function VerifyStudent() {
   const { regNo } = useParams();
@@ -11,9 +14,7 @@ function VerifyStudent() {
   useEffect(() => {
     async function fetchStudent() {
       try {
-        const res = await fetch(`/api/student/details/${regNo}`);
-        if (!res.ok) throw new Error('Student not found');
-        const data = await res.json();
+        const data = await getStudentDetails(regNo);
         setStudent(data);
       } catch (err) {
         setError(err.message);
@@ -24,27 +25,57 @@ function VerifyStudent() {
     fetchStudent();
   }, [regNo]);
 
-  if (loading) return <div className="verify-container">Loading...</div>;
-  if (error) return <div className="verify-container error">{error}</div>;
+  if (loading) return (
+    <div className={styles.verifyPage}>
+      <div className={styles.loaderBox}>
+        <FaSpinner className={styles.spin} />
+        <h2>Verifying Identity...</h2>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="verify-container">
-      <div className="verify-card">
-        <h2>Bus Pass Verification</h2>
-        <div className="verify-photo-section">
-          <img
-            src={student.photo ? `/api/student/uploads/${student.photo}` : '/default-user.png'}
-            alt="Applicant"
-            className="verify-photo"
-          />
-        </div>
-        <div className="verify-details">
-          <p><strong>Name:</strong> {student.name}</p>
-          <p><strong>Reg No:</strong> {student.regNo}</p>
-          <p><strong>Route:</strong> {student.route}</p>
-          <p><strong>Valid Till:</strong> {student.validTill}</p>
-        </div>
-        <div className="verify-status success">✔ Verified</div>
+    <div className={styles.verifyPage}>
+      <div className={styles.container}>
+        {error ? (
+          <div className={styles.errorCard}>
+            <FaExclamationTriangle className={styles.errorIcon} />
+            <h2>Verification Failed</h2>
+            <p>{error}</p>
+          </div>
+        ) : (
+          <motion.div
+            className={styles.resultContainer}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className={`${styles.statusBanner} ${styles.validBg}`}>
+              <div className={styles.statusContent}>
+                <div className={styles.statusIcon}><FaCheckCircle /></div>
+                <div className={styles.statusText}>
+                  <h3>IDENTITY VERIFIED</h3>
+                  <p>Registered student in A.E.R.I Transportation System</p>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.infoCard} style={{ background: 'white', padding: '2rem', borderRadius: '28px' }}>
+              <div className={styles.studentProf} style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                <img
+                  src={student.photo ? `/api/student/uploads/${student.photo}` : '/default-user.png'}
+                  alt="Applicant"
+                  style={{ width: '120px', height: '150px', objectFit: 'cover', borderRadius: '16px', border: '1px solid #e2e8f0' }}
+                />
+                <div className={styles.infoList} style={{ flex: 1 }}>
+                  <div className={styles.infoRow}><FaUser /> <span>Name</span> <strong>{student.name}</strong></div>
+                  <div className={styles.infoRow}><FaIdCard /> <span>Reg No</span> <strong>{student.regNo}</strong></div>
+                  <div className={styles.infoRow}><strong>Route:</strong> <span>{student.route}</span></div>
+                  <div className={styles.infoRow}><strong>Status:</strong> <span style={{ color: '#10b981', fontWeight: 700 }}>VERIFIED</span></div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );

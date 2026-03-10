@@ -19,9 +19,6 @@ const MobilePassView = ({ passData }) => {
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.logo}>E-BUS</div>
-        <div className={styles.validityTag}>
-          Valid Till: {validTill}
-        </div>
       </div>
 
       <div className={styles.statusBadge}>

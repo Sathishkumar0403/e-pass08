@@ -1,352 +1,431 @@
-import React, { useState } from 'react';
-import { FaUser, FaCalendarAlt, FaIdCard, FaGraduationCap, FaPhone, FaUserFriends, FaHome, FaBus, FaImage, FaIdBadge, FaUserGraduate } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  FaUser, FaCalendarAlt, FaIdCard, FaGraduationCap, FaPhone,
+  FaUserFriends, FaHome, FaBus, FaImage, FaIdBadge,
+  FaUserGraduate, FaCheckCircle, FaExclamationTriangle,
+  FaFileAlt, FaMapMarkerAlt, FaShieldAlt, FaSpinner
+} from 'react-icons/fa';
 import styles from './StudentForm.module.css';
-import { applyStudent } from '../utils/api';
+import { applyStudent, getRouteFees } from '../utils/api';
+import LocationAutocomplete from './LocationAutocomplete';
+
+const INITIAL_FORM_STATE = {
+  name: '',
+  fatherName: '',
+  dob: '',
+  regNo: '',
+  year: '',
+  mobile: '',
+  parentMobile: '',
+  address: '',
+  from: 'College',
+  to: '',
+  route: '',
+  photo: null,
+  aadharPhoto: null,
+  collegeIdPhoto: null,
+  college: '',
+  userType: 'student',
+  department: '',
+  aadharNumber: '',
+  busNumber: '',
+};
 
 function StudentForm() {
-  const [form, setForm] = useState({
-    name: '', dob: '', regNo: '', branchYear: '', mobile: '', parentMobile: '', address: '', route: '', validity: '', photo: null, aadharNumber: '', aadharPhoto: null, collegeIdPhoto: null, college: '', busNo: '', userType: 'student',
-  });
+  const [form, setForm] = useState(INITIAL_FORM_STATE);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [routeOptions, setRouteOptions] = useState([]);
+  const [fromOptions, setFromOptions] = useState([]);
+  const [toOptions, setToOptions] = useState([]);
+
+  useEffect(() => {
+    // Fetch available routes for suggestions
+    getRouteFees().then(data => {
+      setRouteOptions(data || []);
+      // Extract unique 'to' locations for destination suggestions
+      const destinations = [...new Set(data.map(item => item.to))].filter(Boolean);
+      setToOptions(destinations);
+    }).catch(err => console.error('Error fetching routes:', err));
+  }, []);
+
+  // Route selection logic removed as per static Origin requirement
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    if (name === 'photo' || name === 'aadharPhoto' || name === 'collegeIdPhoto') {
-      if (files && files.length > 0) {
-        setForm({ ...form, [name]: files[0] });
-      } else {
-        setForm({ ...form, [name]: null });
-      }
-    } else if (name === 'userType') {
-      setForm({ ...form, userType: value });
+    if (files) {
+      setForm(prev => ({ ...prev, [name]: files[0] || null }));
+    } else if (name === 'mobile' || name === 'parentMobile') {
+      const val = value.replace(/\D/g, '').slice(0, 10);
+      setForm(prev => ({ ...prev, [name]: val }));
     } else {
-      setForm({ ...form, [name]: value });
+      setForm(prev => ({ ...prev, [name]: value }));
     }
+    setError(''); // Clear error on change
   };
 
   const handleRemoveFile = (field) => {
-    setForm({ ...form, [field]: null });
-    // Also clear the file input value
-    if (fileInputs[field]) fileInputs[field].value = '';
+    setForm(prev => ({ ...prev, [field]: null }));
   };
 
-  // Refs for file inputs to clear them
-  const fileInputs = {};
+  const validateForm = () => {
+    const requiredFields = [
+      { key: 'name', label: 'Full Name' },
+      { key: 'fatherName', label: "Father's Name" },
+      { key: 'dob', label: 'Date of Birth' },
+      { key: 'regNo', label: 'Registration Number' },
+      { key: 'year', label: 'Year' },
+      { key: 'department', label: 'Department' },
+      { key: 'mobile', label: 'Mobile Number' },
+      { key: 'parentMobile', label: "Parent's Mobile" },
+      { key: 'address', label: 'Address' },
+      { key: 'from', label: 'From (Origin)' },
+      { key: 'to', label: 'To (Destination)' },
+      { key: 'college', label: 'College Name' },
+      { key: 'aadharNumber', label: 'Aadhar Number' },
+      { key: 'busNumber', label: 'Bus Number' },
+    ];
 
-  const handleFileInputRef = (ref, field) => {
-    if (ref) fileInputs[field] = ref;
+    const missing = requiredFields.filter(f => !form[f.key]).map(f => f.label);
+
+    if (missing.length > 0) {
+      return `Please fill in the following required fields: ${missing.join(', ')}`;
+    }
+
+    if (!form.photo || !form.collegeIdPhoto) {
+      return 'Please upload both Profile Photo and ID/Fee Bill';
+    }
+
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(form.mobile) || !mobileRegex.test(form.parentMobile)) {
+      return 'Please enter valid 10-digit mobile numbers';
+    }
+
+    if (form.aadharNumber.length !== 12) {
+      return 'Aadhar Number must be exactly 12 digits';
+    }
+
+    return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(''); 
+    setMessage('');
     setError('');
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setIsSubmitting(true);
-    
-    // Validate required text fields
-    if (!form.name || !form.dob || !form.regNo || !form.branchYear || !form.mobile || !form.parentMobile || !form.address || !form.route || !form.validity || !form.aadharNumber || !form.college || !form.busNo || !form.userType) {
-      setError('Please fill in all required fields');
-      setIsSubmitting(false);
-      return;
-    }
-    
-    // Validate required images
-    if (!form.photo || !form.aadharPhoto || !form.collegeIdPhoto) {
-      setError('Please upload all required images (Photo, Aadhar Photo, and College ID Photo)');
-      setIsSubmitting(false);
-      return;
-    }
-    
-    // Validate mobile number format
-    const mobileRegex = /^[6-9]\d{9}$/;
-    if (!mobileRegex.test(form.mobile) || !mobileRegex.test(form.parentMobile)) {
-      setError('Please enter valid 10-digit mobile numbers starting with 6-9');
-      setIsSubmitting(false);
-      return;
-    }
-    
     try {
-      console.log('Submitting form data:', form);
-      const res = await applyStudent(form);
-      console.log('Response from server:', res);
-      
+      // Find matching route fee if it exists to get the canonical route name
+      const matchingFee = routeOptions.find(opt => opt.to === form.to);
+      const submitData = {
+        ...form,
+        route: matchingFee ? matchingFee.route : `${form.from} - ${form.to}`
+      };
+
+      const res = await applyStudent(submitData);
+
       if (res.message === 'Application submitted successfully') {
         setMessage('Application submitted successfully!');
-        setForm({ name: '', dob: '', regNo: '', branchYear: '', mobile: '', parentMobile: '', address: '', route: '', validity: '', photo: null, aadharNumber: '', aadharPhoto: null, collegeIdPhoto: null, college: '', busNo: '', userType: 'student' });
-        // Clear file inputs
-        Object.keys(fileInputs).forEach(key => {
-          if (fileInputs[key]) fileInputs[key].value = '';
-        });
+        setForm(INITIAL_FORM_STATE);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setError(res.error || 'Submission failed');
       }
-    } catch (error) {
-      console.error('Form submission error:', error);
-      setError(error.message || 'Submission failed. Please try again.');
+    } catch (err) {
+      setError(err.message || 'An error occurred during submission');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+
   return (
-    <form className={`${styles.form} ${isSubmitting ? styles.loading : ''}`} onSubmit={handleSubmit}>
-      <h2 className={styles.title}>Student Bus Pass Application Form</h2>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="name" className={styles.label}><FaUser style={{ marginRight: 6, color: '#6366f1' }} />Name</label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          placeholder="Enter your name"
-          value={form.name}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="dob" className={styles.label}><FaCalendarAlt style={{ marginRight: 6, color: '#818cf8' }} />Date of Birth</label>
-        <input
-          type="date"
-          id="dob"
-          name="dob"
-          value={form.dob}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="regNo" className={styles.label}><FaIdCard style={{ marginRight: 6, color: '#0ea5e9' }} />Register Number</label>
-        <input
-          type="text"
-          id="regNo"
-          name="regNo"
-          placeholder="Enter register number"
-          value={form.regNo}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-       <div className={styles.fieldGroup}>
-        <label htmlFor="college" className={styles.label}><FaUser style={{ marginRight: 6, color: '#6366f1' }} />College Name</label>
-        <input
-          type="text"
-          id="college"
-          name="college"
-          placeholder="Enter your college name"
-          value={form.college}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="branchYear" className={styles.label}><FaGraduationCap style={{ marginRight: 6, color: '#f59e42' }} />Branch and Year</label>
-        <input
-          type="text"
-          id="branchYear"
-          name="branchYear"
-          placeholder="e.g. CSE - 3rd Year"
-          value={form.branchYear}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="mobile" className={styles.label}><FaPhone style={{ marginRight: 6, color: '#22c55e' }} />Mobile Number</label>
-        <input
-          type="tel"
-          id="mobile"
-          name="mobile"
-          placeholder="Enter your mobile number"
-          value={form.mobile}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="parentMobile" className={styles.label}><FaUserFriends style={{ marginRight: 6, color: '#f43f5e' }} />Parent's Mobile Number</label>
-        <input
-          type="tel"
-          id="parentMobile"
-          name="parentMobile"
-          placeholder="Enter parent's mobile number"
-          value={form.parentMobile}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="address" className={styles.label}><FaHome style={{ marginRight: 6, color: '#a3e635' }} />Address</label>
-        <textarea
-          id="address"
-          name="address"
-          rows="3"
-          placeholder="Enter your address"
-          value={form.address}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        ></textarea>
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="route" className={styles.label}><FaBus style={{ marginRight: 6, color: '#fbbf24' }} />Route</label>
-        <input
-          type="text"
-          id="route"
-          name="route"
-          placeholder="e.g. Ace to Hosur"
-          value={form.route}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="validity" className={styles.label}><FaCalendarAlt style={{ marginRight: 6, color: '#818cf8' }} />Validity (Month)</label>
-        <input
-          type="month"
-          id="validity"
-          name="validity"
-          value={form.validity}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="busNo" className={styles.label}><FaBus style={{ marginRight: 6, color: '#fbbf24' }} />Bus Number</label>
-        <select
-          id="busNo"
-          name="busNo"
-          value={form.busNo}
-          onChange={handleChange}
-          required
-          className={styles.input}
+    <div className={styles.formWrapper}>
+      <form className={styles.form} onSubmit={handleSubmit} noValidate>
+        {/* Section 1: Personal Info */}
+        <motion.div
+          className={styles.card}
+          variants={cardVariants}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.5 }}
         >
-          <option value="">Select a bus number</option>
-          <option value="101">101</option>
-          <option value="102">102</option>
-          <option value="103">103</option>
-          <option value="104">104</option>
-        </select>
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="userType" className={styles.label}><FaUserGraduate style={{ marginRight: 6, color: '#6366f1' }} />Application Type</label>
-        <select
-          id="userType"
-          name="userType"
-          value={form.userType}
-          onChange={handleChange}
-          required
-          className={styles.input}
+          <div className={styles.cardHeader}>
+            <div className={styles.cardIcon}><FaUser /></div>
+            <h3 className={styles.cardTitle}>Personal Information</h3>
+          </div>
+          <div className={styles.grid}>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Full Name</label>
+              <div className={styles.inputWrapper}>
+                <FaUser className={styles.inputIcon} />
+                <input type="text" name="name" value={form.name} onChange={handleChange} placeholder="John Doe" required className={styles.input} />
+              </div>
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Father's Name</label>
+              <div className={styles.inputWrapper}>
+                <FaUserFriends className={styles.inputIcon} />
+                <input type="text" name="fatherName" value={form.fatherName} onChange={handleChange} placeholder="Father's Name" required className={styles.input} />
+              </div>
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Date of Birth</label>
+              <div className={styles.inputWrapper}>
+                <FaCalendarAlt className={styles.inputIcon} />
+                <input type="date" name="dob" value={form.dob} onChange={handleChange} required className={styles.input} />
+              </div>
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Registration Number</label>
+              <div className={styles.inputWrapper}>
+                <FaIdCard className={styles.inputIcon} />
+                <input type="text" name="regNo" value={form.regNo} onChange={handleChange} placeholder="CS123456" required className={styles.input} />
+              </div>
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Year</label>
+              <div className={styles.inputWrapper}>
+                <FaGraduationCap className={styles.inputIcon} />
+                <select name="year" value={form.year} onChange={handleChange} required className={styles.select}>
+                  <option value="">Select Year</option>
+                  <option value="I">I Year</option>
+                  <option value="II">II Year</option>
+                  <option value="III">III Year</option>
+                  <option value="IV">IV Year</option>
+                  <option value="V">V Year</option>
+                </select>
+              </div>
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Department</label>
+              <div className={styles.inputWrapper}>
+                <FaGraduationCap className={styles.inputIcon} />
+                <select name="department" value={form.department} onChange={handleChange} required className={styles.select}>
+                  <option value="">Select Department</option>
+                  <option value="CSE">CSE</option>
+                  <option value="EEE">EEE</option>
+                  <option value="ECE">ECE</option>
+                  <option value="MECH">MECH</option>
+                  <option value="CIVIL">CIVIL</option>
+                </select>
+              </div>
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Application Type</label>
+              <div className={styles.inputWrapper}>
+                <FaUserGraduate className={styles.inputIcon} />
+                <select name="userType" value={form.userType} onChange={handleChange} className={styles.select}>
+                  <option value="student">Student</option>
+                  <option value="teaching_staff">Teaching Staff</option>
+                  <option value="non_teaching_staff">Non-Teaching Staff</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Section 2: Contact Info */}
+        <motion.div
+          className={styles.card}
+          variants={cardVariants}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <option value="student">Student</option>
-          <option value="staff">Staff</option>
-        </select>
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="photo" className={styles.label}><FaImage style={{ marginRight: 6, color: '#6366f1' }} />Upload Photo</label>
-      <div className={styles.fileInputRow}>
-        <input
-          type="file"
-          id="photo"
-          name="photo"
-          accept="image/*"
-          onChange={handleChange}
-          className={styles.input}
-          ref={ref => handleFileInputRef(ref, 'photo')}
-        />
-        {form.photo && (
-          <div className={styles.fileInputWrapper}>
-            <div className={styles.fileName}>
-              {form.photo.name}
-            </div>
-            <button type="button" className={styles.removeButton} onClick={() => handleRemoveFile('photo')}>
-              Remove
-            </button>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardIcon}><FaPhone /></div>
+            <h3 className={styles.cardTitle}>Contact Details</h3>
           </div>
-        )}
-      </div>
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="aadharNumber" className={styles.label}><FaIdBadge style={{ marginRight: 6, color: '#f59e42' }} />Aadhar Card Number</label>
-        <input
-          type="text"
-          id="aadharNumber"
-          name="aadharNumber"
-          placeholder="Enter your Aadhar card number"
-          value={form.aadharNumber}
-          onChange={handleChange}
-          required
-          className={styles.input}
-        />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="aadharPhoto" className={styles.label}><FaImage style={{ marginRight: 6, color: '#6366f1' }} />Upload Aadhar Card Photo</label>
-      <div className={styles.fileInputRow}>
-        <input
-          type="file"
-          id="aadharPhoto"
-          name="aadharPhoto"
-          accept="image/*"
-          onChange={handleChange}
-          className={styles.input}
-          ref={ref => handleFileInputRef(ref, 'aadharPhoto')}
-        />
-        {form.aadharPhoto && (
-          <div className={styles.fileInputWrapper}>
-            <div className={styles.fileName}>
-              {form.aadharPhoto.name}
+          <div className={styles.grid}>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Mobile Number</label>
+              <div className={styles.inputWrapper}>
+                <FaPhone className={styles.inputIcon} />
+                <input type="tel" name="mobile" value={form.mobile} onChange={handleChange} placeholder="9876543210" required className={styles.input} />
+              </div>
             </div>
-            <button type="button" className={styles.removeButton} onClick={() => handleRemoveFile('aadharPhoto')}>
-              Remove
-            </button>
-          </div>
-        )}
-      </div>
-      </div>
-      <div className={styles.fieldGroup}>
-        <label htmlFor="collegeIdPhoto" className={styles.label}><FaImage style={{ marginRight: 6, color: '#6366f1' }} />Upload College ID Card Photo or tution fee bill</label>
-      <div className={styles.fileInputRow}>
-        <input
-          type="file"
-          id="collegeIdPhoto"
-          name="collegeIdPhoto"
-          accept="image/*"
-          onChange={handleChange}
-          className={styles.input}
-          ref={ref => handleFileInputRef(ref, 'collegeIdPhoto')}
-        />
-        {form.collegeIdPhoto && (
-          <div className={styles.fileInputWrapper}>
-            <div className={styles.fileName}>
-              {form.collegeIdPhoto.name}
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Parent's Mobile</label>
+              <div className={styles.inputWrapper}>
+                <FaUserFriends className={styles.inputIcon} />
+                <input type="tel" name="parentMobile" value={form.parentMobile} onChange={handleChange} placeholder="8765432109" required className={styles.input} />
+              </div>
             </div>
-            <button type="button" className={styles.removeButton} onClick={() => handleRemoveFile('collegeIdPhoto')}>
-              Remove
-            </button>
+            <div className={styles.fullWidth}>
+              <label className={styles.label}>Residential Address</label>
+              <LocationAutocomplete
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                placeholder="Search or enter your full residential address"
+                icon={FaHome}
+                className={styles.inputWrapper}
+                inputClassName={styles.input}
+                iconClassName={styles.inputIcon}
+              />
+            </div>
           </div>
-        )}
-      </div>
-      </div>
-      <div className={styles.buttonGroup}>
-        <button type="submit" className={styles.button} disabled={isSubmitting}>
-          {isSubmitting ? 'Submitting...' : 'Submit'}
-        </button>
-      </div>
-      {message && <div className={styles.successMessage}>{message}</div>}
-      {error && <div className={styles.errorMessage}>{error}</div>}
-    </form>
+        </motion.div>
+
+        {/* Section 3: Journey Details */}
+        <motion.div
+          className={styles.card}
+          variants={cardVariants}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <div className={styles.cardHeader}>
+            <div className={styles.cardIcon}><FaBus /></div>
+            <h3 className={styles.cardTitle}>Journey Details</h3>
+          </div>
+          <div className={styles.grid}>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>College Name</label>
+              <div className={styles.inputWrapper}>
+                <FaGraduationCap className={styles.inputIcon} />
+                <select name="college" value={form.college} onChange={handleChange} required className={styles.select}>
+                  <option value="">Select College</option>
+                  <option value="Adhiyamaan college of engineering">Adhiyamaan college of engineering</option>
+                  <option value="adhiyamaan polytechnic college">adhiyamaan polytechnic college</option>
+                  <option value="M.G.R college">M.G.R college</option>
+                  <option value="st.peters medical college and hospital">st.peters medical college and hospital</option>
+                </select>
+              </div>
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>From (Origin)</label>
+              <div className={styles.inputWrapper}>
+                <FaMapMarkerAlt className={styles.inputIcon} />
+                <input type="text" name="from" value={form.from} readOnly className={styles.readOnlyInput} />
+              </div>
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>To (Destination)</label>
+              <LocationAutocomplete
+                name="to"
+                value={form.to}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // If we picked a local suggestion, find its details
+                  const matchingFee = routeOptions.find(opt => opt.to === val);
+                  if (matchingFee) {
+                    setForm(prev => ({
+                      ...prev,
+                      to: val,
+                      // We don't auto-fill busNumber here because admin assigns it later based on actual route
+                      // but we could suggest it if it was linked to the route_fee.
+                      // For now, just ensure the destination is set.
+                    }));
+                  } else {
+                    setForm(prev => ({ ...prev, to: val }));
+                  }
+                }}
+                placeholder="Search your destination..."
+                className={styles.inputWrapper}
+                localSuggestions={toOptions}
+                inputClassName={styles.input}
+                iconClassName={styles.inputIcon}
+                icon={FaMapMarkerAlt}
+              />
+            </div>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Bus Number</label>
+              <div className={styles.inputWrapper}>
+                <FaBus className={styles.inputIcon} />
+                <input type="text" name="busNumber" value={form.busNumber} onChange={handleChange} placeholder="e.g. 15 or TN24-1234" required className={styles.input} />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Section 4: Documents */}
+        <motion.div
+          className={styles.card}
+          variants={cardVariants}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <div className={styles.cardHeader}>
+            <div className={styles.cardIcon}><FaFileAlt /></div>
+            <h3 className={styles.cardTitle}>Required Documents</h3>
+          </div>
+          <div className={styles.grid}>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Aadhar Number</label>
+              <div className={styles.inputWrapper}>
+                <FaIdBadge className={styles.inputIcon} />
+                <input type="text" name="aadharNumber" value={form.aadharNumber} onChange={handleChange} placeholder="12-digit number" maxLength={12} required className={styles.input} />
+              </div>
+            </div>
+            <div className={styles.fullWidth}>
+              <div className={styles.fileUploadGrid}>
+                {[
+                  { label: 'Profile Photo', name: 'photo', icon: FaUser, required: true },
+                  { label: 'Aadhar Copy (Optional)', name: 'aadharPhoto', icon: FaIdBadge, required: false },
+                  { label: 'ID / Fee Bill', name: 'collegeIdPhoto', icon: FaImage, required: true }
+                ].map((doc) => (
+                  <div key={doc.name} className={`${styles.fileBox} ${!doc.required ? styles.optional : ''}`}>
+                    <label className={styles.fileLabel}>
+                      <doc.icon />
+                      <span>{doc.label}</span>
+                      <input type="file" name={doc.name} accept="image/*" onChange={handleChange} className={styles.hiddenInput} />
+                    </label>
+                    {form[doc.name] && (
+                      <div className={styles.fileBadge}>
+                        <span className={styles.fileIndicator} title={form[doc.name].name}>
+                          {form[doc.name].name.length > 15 ? form[doc.name].name.substring(0, 15) + '...' : form[doc.name].name}
+                        </span>
+                        <button type="button" onClick={() => handleRemoveFile(doc.name)} className={styles.removeFile}>&times;</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Messages */}
+        <AnimatePresence>
+          {error && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className={styles.errorBanner}>
+              <FaExclamationTriangle /> {error}
+            </motion.div>
+          )}
+          {message && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className={styles.successBanner}>
+              <FaCheckCircle /> {message}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className={styles.submitSection}>
+          <button type="submit" disabled={isSubmitting} className={styles.submitButton}>
+            {isSubmitting ? (
+              <><FaSpinner className={styles.spin} /> Processing Application...</>
+            ) : (
+              <><FaShieldAlt /> Submit Secure Application</>
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
 export default StudentForm;
-  

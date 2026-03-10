@@ -1,17 +1,20 @@
-// API configuration
-const getBackendUrl = () => {
-  const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-  
-  if (isDevelopment) {
-    // In development, always use port 3001 for backend
-    return 'http://localhost:3001/api';
+// Detect the backend URL for images and API
+// In dev, React runs on :3000 or :3002 and backend on :3001
+// In prod, they are served together
+const BACKEND_BASE = (() => {
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location;
+    // If dev (not port 3001 and not standard empty port), backend is on 3001
+    if (process.env.NODE_ENV === 'development' || (port && port !== '3001' && port !== '80' && port !== '443')) {
+      return `${protocol}//${hostname}:3001`;
+    }
+    return '';
   }
-  
-  // In production, use the same origin
-  return '/api';
-};
+  return '';
+})();
 
-export const API_BASE_URL = process.env.REACT_APP_API_URL || getBackendUrl();
+// API configuration
+export const API_BASE_URL = `${BACKEND_BASE}/api`;
 
 // Backup API URLs if main one fails
 export const FALLBACK_API_URLS = [
@@ -22,8 +25,14 @@ export const FALLBACK_API_URLS = [
 // Image URL helper
 export const getImageUrl = (path) => {
   if (!path) return '';
-  if (path.startsWith('http') || path.startsWith('blob:')) return path;
-  // Remove any double slashes in the path except after http(s):
-  const url = `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
-  return url.replace(/([^:]\/)\/+/g, "$1");
+  if (path.startsWith('blob:')) return path;
+  // If already a full absolute URL (from backend), return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    // In development, backend returns http://localhost:3001/uploads/...
+    // This should work directly
+    return path;
+  }
+  // Relative path like /uploads/filename -> prepend backend base
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${BACKEND_BASE}${cleanPath}`;
 };

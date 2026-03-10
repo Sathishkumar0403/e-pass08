@@ -4,6 +4,7 @@ import { FaQrcode, FaTimes, FaCheckCircle, FaClock, FaBus, FaIdCard } from 'reac
 import styles from './QRScanner.module.css';
 import MobilePassView from './MobilePassView';
 import BusPassTemplate from './BusPassTemplate';
+import { verifyPassData } from '../utils/api';
 
 function QRScanner() {
   const [scannedData, setScannedData] = useState(null);
@@ -17,15 +18,15 @@ function QRScanner() {
     try {
       setError('');
       setIsScanning(true);
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
           facingMode: 'environment',
           width: { ideal: 1280 },
           height: { ideal: 720 }
-        } 
+        }
       });
-      
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -47,15 +48,15 @@ function QRScanner() {
 
   const captureFrame = () => {
     if (!videoRef.current || !canvasRef.current) return;
-    
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     // Simple QR detection simulation - in real implementation, use a QR library
     // For now, we'll simulate scanning with a button
     return canvas.toDataURL();
@@ -73,7 +74,7 @@ function QRScanner() {
       dob: "2002-05-15",
       mobile: "9876543210",
       photo: "1757734786412-957329662-pavan passport.jpg", // Use existing photo
-      
+
     };
     setScannedData(sampleData);
     stopScanning();
@@ -83,7 +84,7 @@ function QRScanner() {
     try {
       // Try to parse as JSON first
       const parsedData = JSON.parse(data);
-      
+
       // Check if the pass is cancelled
       if (parsedData.cancelled) {
         setError('This pass has been cancelled and is no longer valid');
@@ -96,8 +97,8 @@ function QRScanner() {
       }
 
       // Check pass validity with the server
-      const response = await fetch(`/api/verify-pass/${parsedData.passNo}`);
-      const verificationData = await response.json();
+      const passId = parsedData.regNo || parsedData.passNo;
+      const verificationData = await verifyPassData(passId);
 
       if (!verificationData.valid) {
         setError(verificationData.message);
@@ -113,7 +114,7 @@ function QRScanner() {
         window.location.href = parsedData.passUrl;
         return;
       }
-      
+
       setScannedData({
         ...parsedData,
         status: 'valid',
@@ -194,11 +195,10 @@ function QRScanner() {
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Status Card */}
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className={`text-lg font-bold mb-4 flex items-center ${
-              scannedData.status === 'cancelled' ? 'text-red-600' :
-              scannedData.status === 'invalid' ? 'text-yellow-600' :
-              'text-green-600'
-            }`}>
+            <div className={`text-lg font-bold mb-4 flex items-center ${scannedData.status === 'cancelled' ? 'text-red-600' :
+                scannedData.status === 'invalid' ? 'text-yellow-600' :
+                  'text-green-600'
+              }`}>
               {scannedData.status === 'cancelled' ? (
                 <>
                   <FaTimes className="mr-2" />
@@ -216,11 +216,10 @@ function QRScanner() {
                 </>
               )}
             </div>
-            
+
             {(scannedData.status === 'cancelled' || scannedData.status === 'invalid') && (
-              <div className={`p-4 rounded-lg mb-4 ${
-                scannedData.status === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'
-              }`}>
+              <div className={`p-4 rounded-lg mb-4 ${scannedData.status === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'
+                }`}>
                 {scannedData.status === 'cancelled' ? scannedData.cancelMessage : scannedData.invalidMessage}
               </div>
             )}
@@ -232,14 +231,13 @@ function QRScanner() {
               </div>
               <div className="flex justify-between items-center py-2 border-b border-gray-200">
                 <span className="text-gray-600">Pass Status</span>
-                <span className={`font-semibold ${
-                  scannedData.status === 'cancelled' ? 'text-red-600' :
-                  scannedData.status === 'invalid' ? 'text-yellow-600' :
-                  'text-green-600'
-                }`}>
+                <span className={`font-semibold ${scannedData.status === 'cancelled' ? 'text-red-600' :
+                    scannedData.status === 'invalid' ? 'text-yellow-600' :
+                      'text-green-600'
+                  }`}>
                   {scannedData.status === 'cancelled' ? 'CANCELLED' :
-                   scannedData.status === 'invalid' ? 'INVALID' :
-                   'ACTIVE'}
+                    scannedData.status === 'invalid' ? 'INVALID' :
+                      'ACTIVE'}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-gray-200">
@@ -297,7 +295,7 @@ function QRScanner() {
         <FaQrcode style={{ marginRight: 8, color: '#6366f1', verticalAlign: 'middle' }} />
         QR Scanner
       </h2>
-      
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}

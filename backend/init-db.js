@@ -8,10 +8,10 @@ const __dirname = path.dirname(__filename);
 
 (async () => {
   let db;
-  
+
   try {
     console.log('🔧 Initializing SQLite database...');
-    
+
     db = await open({
       filename: path.join(__dirname, 'buspass.sqlite'),
       driver: sqlite3.Database
@@ -25,7 +25,7 @@ const __dirname = path.dirname(__filename);
         name TEXT NOT NULL,
         dob TEXT NOT NULL,
         regNo TEXT UNIQUE NOT NULL,
-        branchYear TEXT NOT NULL,
+        branchYear TEXT,
         mobile TEXT NOT NULL,
         parentMobile TEXT NOT NULL,
         address TEXT NOT NULL,
@@ -52,7 +52,9 @@ const __dirname = path.dirname(__filename);
     // Add new column for fees bill photo, ignore error if it already exists
     const columnsToAdd = [
       { name: 'feesBillPhoto', type: 'TEXT' },
+      { name: 'fatherName', type: 'TEXT' },
       { name: 'cancellation_requested', type: 'BOOLEAN DEFAULT 0' },
+      { name: 'cancellation_requested_at', type: 'DATETIME' },
       { name: 'cancelled', type: 'BOOLEAN DEFAULT 0' },
       { name: 'cancellation_reason', type: 'TEXT' },
       { name: 'cancelled_at', type: 'DATETIME' },
@@ -60,7 +62,13 @@ const __dirname = path.dirname(__filename);
       { name: 'college', type: 'TEXT' }, // NEW
       { name: 'busNo', type: 'TEXT' },   // NEW
       { name: 'userType', type: 'TEXT' },// NEW (student/staff)
-      { name: 'passNo', type: 'TEXT' } // CHANGED FROM TEXT UNIQUE to TEXT
+      { name: 'passNo', type: 'TEXT' }, // CHANGED FROM TEXT UNIQUE to TEXT
+      { name: 'payment_status', type: 'TEXT' },
+      { name: 'payment_id', type: 'TEXT' },
+      { name: 'payment_amount', type: 'REAL' },
+      { name: 'payment_date', type: 'DATETIME' },
+      { name: 'razorpay_order_id', type: 'TEXT' },
+      { name: 'rejection_reason', type: 'TEXT' }
     ];
 
     for (const column of columnsToAdd) {
@@ -78,11 +86,11 @@ const __dirname = path.dirname(__filename);
 
     console.log('✅ Database initialized successfully!');
     console.log(`📁 Database file: ${path.join(__dirname, 'buspass.sqlite')}`);
-    
+
     // Check if there are any existing applications
     const count = await db.get('SELECT COUNT(*) as count FROM student_applications');
     console.log(`📋 Total applications: ${count.count}`);
-    
+
   } catch (error) {
     console.error('❌ Error initializing database:', error);
     process.exit(1);
