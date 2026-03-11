@@ -30,6 +30,7 @@ const INITIAL_FORM_STATE = {
   department: '',
   aadharNumber: '',
   busNumber: '',
+  fee_amount: 0,
 };
 
 function StudentForm() {
@@ -123,11 +124,12 @@ function StudentForm() {
 
     setIsSubmitting(true);
     try {
-      // Find matching route fee if it exists to get the canonical route name
+      // Find matching route fee if it exists to get the canonical route name and fee
       const matchingFee = routeOptions.find(opt => opt.to === form.to);
       const submitData = {
         ...form,
-        route: matchingFee ? matchingFee.route : `${form.from} - ${form.to}`
+        route: matchingFee ? matchingFee.route : `${form.from} - ${form.to}`,
+        fee_amount: matchingFee ? Number(matchingFee.fee_amount) : 0
       };
 
       const res = await applyStudent(submitData);
@@ -326,9 +328,8 @@ function StudentForm() {
                     setForm(prev => ({
                       ...prev,
                       to: val,
-                      // We don't auto-fill busNumber here because admin assigns it later based on actual route
-                      // but we could suggest it if it was linked to the route_fee.
-                      // For now, just ensure the destination is set.
+                      route: matchingFee.route,
+                      fee_amount: matchingFee.fee_amount
                     }));
                   } else {
                     setForm(prev => ({ ...prev, to: val }));

@@ -20,16 +20,15 @@ export const downloadBusPass = async (elementId, filename = 'bus-pass') => {
     // Create canvas from the element
     const canvas = await html2canvas(element, {
       backgroundColor: '#ffffff',
-      scale: 2, // Higher resolution for better quality
+      scale: 3, 
       useCORS: true,
-      allowTaint: true,
       logging: false,
       width: element.offsetWidth,
       height: element.offsetHeight,
-      imageTimeout: 15000, // Wait up to 15 seconds for images
+      imageTimeout: 15000,
     });
 
-    // Convert canvas to JPEG blob
+    // Convert canvas to PNG blob
     return new Promise((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (!blob) {
@@ -41,7 +40,7 @@ export const downloadBusPass = async (elementId, filename = 'bus-pass') => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${filename}-${new Date().toISOString().split('T')[0]}.jpg`;
+        link.download = `${filename}.png`;
         
         // Trigger download
         document.body.appendChild(link);
@@ -49,9 +48,9 @@ export const downloadBusPass = async (elementId, filename = 'bus-pass') => {
         document.body.removeChild(link);
         
         // Clean up
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         resolve();
-      }, 'image/jpeg', 0.95); // JPEG format with 95% quality
+      }, 'image/png');
     });
   } catch (error) {
     console.error('Error downloading bus pass:', error);
