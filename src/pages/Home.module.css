@@ -1,7 +1,7 @@
 .pageWrapper {
   min-height: 100vh;
   position: relative;
-  overflow: visible;
+  overflow-x: hidden;
   background: #fdfdfd;
   background-image: linear-gradient(rgba(253, 253, 253, 0.4), rgba(253, 253, 253, 0.4)), url('../assets/college-bg.jpg');
   background-size: cover;
@@ -441,7 +441,7 @@
 
 /* CTA Section */
 .ctaSection {
-  padding: 10rem 2rem;
+  padding: 6rem 2rem;
   max-width: 1000px;
   margin: 0 auto;
   text-align: center;
@@ -482,7 +482,7 @@
 
 .footer {
   text-align: center;
-  padding: 5rem 2rem;
+  padding: 3rem 2rem 5rem;
   color: #080808;
   font-size: 0.875rem;
 }
