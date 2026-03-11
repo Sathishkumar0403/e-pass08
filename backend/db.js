@@ -13,38 +13,38 @@ try {
   // Silent fail
 }
 
-let client = null;
-let db = null;
+let cachedClient = global.mongoClient || null;
+let cachedDb = global.mongoDb || null;
 
 export async function connectDB() {
-  if (db) return db;
+  if (cachedDb) return cachedDb;
   
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error("MONGODB_URI is not defined. Please check your environment variables.");
+    throw new Error("MONGODB_URI is not defined.");
   }
 
-  if (!client) {
-    client = new MongoClient(uri, {
+  if (!cachedClient) {
+    console.log("Creating new MongoClient...");
+    cachedClient = new MongoClient(uri, {
       serverApi: {
         version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
       },
-      connectTimeoutMS: 5000,
-      serverSelectionTimeoutMS: 5000
+      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 10000
     });
+    global.mongoClient = cachedClient;
   }
   try {
-    console.log("Attempting to connect to MongoDB...");
-    await client.connect();
-    db = client.db("ebuspass");
+    console.log("Connecting to MongoDB Atlas...");
+    await cachedClient.connect();
+    cachedDb = cachedClient.db("ebuspass");
+    global.mongoDb = cachedDb;
     console.log("Connected to MongoDB Atlas successfully!");
     
-    // Skip seeding on every connection for better performance on Vercel
-    // await seedMongoDB(db);
-    
-    return db;
+    return cachedDb;
   } catch (err) {
     console.error("Failed to connect to MongoDB:", err.message);
     throw err;
