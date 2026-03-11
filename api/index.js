@@ -542,40 +542,40 @@ app.get('/api/student/get-fee/:route', async (req, res) => {
     const rawRoute = decodeURIComponent(req.params.route).toLowerCase();
     const allFees = await req.mongo.collection('route_fees').find({}).toArray();
     
-    // Normalize logic
-    const clean = s => s.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+    // Normalize logic: keep only significant alphanumeric words
+    const clean = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
     const sClean = clean(rawRoute);
-    
-    console.log(`[Fee Match] Route: "${rawRoute}" -> Normalized: "${sClean}"`);
+    const sWords = sClean.split(" ").filter(w => w.length > 2);
 
     let bestFee = null;
-    let maxScore = 0;
+    let maxMatches = 0;
 
     for (const fee of allFees) {
-      const fWords = [...new Set([
+      // Define keywords for this specific fee record
+      const feeKeywords = [...new Set([
         ...clean(fee.route || "").split(" "),
         ...clean(fee.to || "").split(" "),
         ...clean(fee.from || "").split(" ")
-      ])].filter(w => w.length > 2 && !["india", "tamil", "nadu", "krishnagiri", "district", "college", "university", "transport"].includes(w));
+      ])].filter(w => w.length > 2 && !["india", "tamil", "nadu", "krishnagiri", "district", "college", "university", "transport", "street", "road", "near"].includes(w));
       
-      if (fWords.length === 0) continue;
+      if (feeKeywords.length === 0) continue;
 
-      const matches = fWords.filter(kw => sClean.includes(kw));
-      const score = matches.length;
-
-      if (score > 0 && score > maxScore) {
-        maxScore = score;
+      // Count how many of the fee's defining keywords are found in the student's route string
+      const matches = feeKeywords.filter(kw => sClean.includes(kw)).length;
+      
+      if (matches >= 1 && matches > maxMatches) {
+        maxMatches = matches;
         bestFee = fee;
       }
     }
-    
-    if (bestFee) {
-      console.log(`[Fee Match] SUCCESS! Match: "${bestFee.route || bestFee.to}" Score: ${maxScore}`);
-    } else {
-      console.log(`[Fee Match] FAILED to match "${rawRoute}"`);
-    }
 
-    res.json(bestFee || { fee_amount: 0 });
+    if (bestFee) {
+      console.log(`[Fee Match] SUCCESS for "${rawRoute}". Found match: ${bestFee.to}. Amount: ${bestFee.fee_amount}`);
+      res.json(bestFee);
+    } else {
+      console.log(`[Fee Match] FAIL for "${rawRoute}". No match in ${allFees.length} records.`);
+      res.json({ fee_amount: 0 });
+    }
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

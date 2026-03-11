@@ -1272,6 +1272,10 @@ function AdminDashboard() {
                     <label>Mobile</label>
                     <input type="tel" value={editForm.mobile} onChange={e => setEditForm({ ...editForm, mobile: e.target.value })} />
                   </div>
+                  <div className={styles.inputGroup}>
+                    <label>Fee Amount (₹) - Manual Override</label>
+                    <input type="number" value={editForm.fee_amount || ''} onChange={e => setEditForm({ ...editForm, fee_amount: e.target.value })} placeholder="e.g. 15000" />
+                  </div>
                 </div>
                 <div className={styles.formGrid}>
                   <div className={styles.inputGroup}>
