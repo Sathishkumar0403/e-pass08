@@ -155,8 +155,10 @@ app.put('/api/admin/applications/:id', async (req, res) => {
 
 app.get('/api/admin/payment-details', async (req, res) => {
   try {
-    const apps = await req.applications.find({ payment_status: { $in: ['paid', 'verified'] } }).toArray();
-    res.json(apps);
+    const apps = await req.applications.find({ 
+      payment_status: { $in: ['paid', 'verified', 'processing'] } 
+    }).sort({ updatedAt: -1, payment_date: -1 }).toArray();
+    res.json(apps.map(a => ({ ...a, id: a._id.toString(), regNo: a.regNo || a.reg_no })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -558,12 +560,30 @@ app.get('/api/student/get-fee/:route', async (req, res) => {
 app.post('/api/student/upload-fees-bill', upload.single('feesBill'), async (req, res) => {
   try {
     const { regNo } = req.body;
+    const student = await req.applications.findOne({ $or: [{ regNo }, { reg_no: regNo }] });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
     const fileData = await handleFileUpload(req.file);
+    
+    // Try to get fee amount if not already set
+    let feeAmount = student.fee_amount || student.amount;
+    if (!feeAmount && student.route) {
+      const feeRecord = await req.mongo.collection('route_fees').findOne({ route: { $regex: new RegExp(student.route, 'i') } });
+      if (feeRecord) feeAmount = feeRecord.fee_amount;
+    }
+
     await req.applications.updateOne(
       { $or: [{ regNo }, { reg_no: regNo }] }, 
-      { $set: { feesBillPhoto: fileData, payment_status: 'paid', updatedAt: new Date().toISOString() } }
-    );
-    res.json({ message: 'Bill uploaded', path: fileData });
+      { $set: { 
+          feesBillPhoto: fileData, 
+          payment_status: 'paid', 
+          payment_id: 'MANUAL-DOC',
+          payment_date: new Date().toISOString(),
+          fee_amount: feeAmount || 0,
+          updatedAt: new Date().toISOString() 
+        } 
+      });
+    res.json({ message: 'Bill uploaded successfully', path: fileData });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
