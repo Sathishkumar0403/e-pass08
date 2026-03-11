@@ -1,3 +1,4 @@
+// Vercel Bridge v2.0
 const app = require('../backend/app.js');
 
 module.exports = (req, res) => {
