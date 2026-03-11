@@ -425,6 +425,33 @@ app.get('/api/student/details/:regNo', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/student/verify-pass/:regNo', async (req, res) => {
+  try {
+    const regNo = req.params.regNo;
+    const student = await req.applications.findOne({
+      $or: [{ regNo }, { reg_no: regNo }]
+    });
+    if (!student) return res.status(404).json({ error: 'Pass not found' });
+
+    let branch = student.department || '', year = student.year || '';
+    if (student.branchYear && (!branch || !year)) {
+      const parts = student.branchYear.split(/[-\/\s]+/);
+      if (parts.length >= 2) {
+        year = parts[parts.length - 1];
+        branch = parts.slice(0, -1).join(' ');
+      }
+    }
+
+    res.json({
+      ...student,
+      branch,
+      year,
+      validTill: student.validity || student.validTill,
+      cancelled: !!student.cancelled
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/student/pass/:regNo', async (req, res) => {
   try {
     const regNo = req.params.regNo;
