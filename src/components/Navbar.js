@@ -159,6 +159,12 @@ function Navbar() {
               exit={{ x: '100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
             >
+              <div className={styles.mobileNavHeader}>
+                <span className={styles.mobileNavTitle}>Navigation</span>
+                <button className={styles.closeMenuBtn} onClick={closeMobileMenu}>
+                  <FaTimes />
+                </button>
+              </div>
               <div className={styles.mobileNavContent}>
                 {navItems.map((item) => {
                   const Icon = item.icon;
