@@ -542,34 +542,36 @@ app.get('/api/student/get-fee/:route', async (req, res) => {
     const rawRoute = decodeURIComponent(req.params.route).toLowerCase();
     const routeFees = await req.mongo.collection('route_fees').find({}).toArray();
     
-    // Normalize student route: remove common filler words and punctuation
-    const normalize = s => s.toLowerCase().replace(/[.,-\/#!$%\^&\*;:{}=\-_`~()]/g, " ").replace(/\s+/g, " ").trim();
-    const sRoute = normalize(rawRoute);
-    const sWords = sRoute.split(" ").filter(w => w.length > 2 && w !== "college");
+    // Normalize: remove everything except letters and numbers
+    const clean = s => s.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+    const sClean = clean(rawRoute);
+    const sWords = sClean.split(" ");
 
     let bestFee = null;
-    let maxScore = -1;
+    let maxMatches = 0;
 
     for (const fee of routeFees) {
-      const fTo = normalize(fee.to || fee.route || "");
-      const fRoute = normalize(fee.route || fee.to || "");
+      // Get all words from route name and destination fields
+      const fWords = [...new Set([
+        ...clean(fee.route || "").split(" "),
+        ...clean(fee.to || "").split(" ")
+      ])].filter(w => w.length > 2 && w !== "college" && w !== "university" && w !== "transport" && w !== "india");
       
-      if (fTo === sRoute || fRoute === sRoute) {
-        bestFee = fee;
-        maxScore = 999;
-        break;
-      }
-
-      const fWords = [...new Set([...fTo.split(" "), ...fRoute.split(" ")])].filter(w => w.length > 2 && w !== "college");
       if (fWords.length === 0) continue;
 
-      // Calculate how many admin keywords are in the student's route
-      const matches = fWords.filter(kw => sRoute.includes(kw)).length;
-      const score = matches / fWords.length;
-
-      if (matches > 0 && score > maxScore) {
-        maxScore = score;
+      // Score based on how many keywords of the fee appear in the student route string
+      const matches = fWords.filter(kw => sClean.includes(kw)).length;
+      
+      // Pick the best match
+      if (matches >= 1 && matches > maxMatches) {
+        maxMatches = matches;
         bestFee = fee;
+      } else if (matches >= 1 && matches === maxMatches && bestFee) {
+        // Tie-breaker: prefer the more specific fee (fewer total keywords)
+        const currentFWordsCount = [...new Set([...clean(bestFee.route||"").split(" "), ...clean(bestFee.to||"").split(" ")])].filter(w => w.length > 2).length;
+        if (fWords.length < currentFWordsCount) {
+          bestFee = fee;
+        }
       }
     }
 
@@ -588,19 +590,22 @@ app.post('/api/student/upload-fees-bill', upload.single('feesBill'), async (req,
     // Try to get fee amount if not already set
     let feeAmount = student.fee_amount || student.amount;
     if (!feeAmount && student.route) {
-      const routeKeywords = student.route.toLowerCase().split(/[,\s]+/).filter(w => w.length > 2);
+      const clean = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+      const sClean = clean(student.route);
       const allFees = await req.mongo.collection('route_fees').find({}).toArray();
       let bestFee = null;
-      let maxScore = 0;
+      let maxMatches = 0;
       
       for (const fee of allFees) {
-        const feeTo = (fee.to || fee.route || '').toLowerCase();
-        const kw = feeTo.split(/[,\s]+/).filter(f => f.length > 2 && f !== 'college');
-        if (kw.length === 0) continue;
-        const matches = kw.filter(k => student.route.toLowerCase().includes(k)).length;
-        const score = matches / kw.length;
-        if (matches > 0 && score > maxScore) {
-          maxScore = score;
+        const fWords = [...new Set([
+          ...clean(fee.route || "").split(" "),
+          ...clean(fee.to || "").split(" ")
+        ])].filter(w => w.length > 2 && w !== "college" && w !== "india");
+        
+        if (fWords.length === 0) continue;
+        const matches = fWords.filter(kw => sClean.includes(kw)).length;
+        if (matches >= 1 && matches > maxMatches) {
+          maxMatches = matches;
           bestFee = fee;
         }
       }

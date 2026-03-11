@@ -98,7 +98,7 @@ function StudentDashboard() {
         setSystemSettings(settings);
       } catch (err) { }
     } catch (err) { }
-  }, [studentData?.regNo]);
+  }, [studentData?.regNo, studentData?.route]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
