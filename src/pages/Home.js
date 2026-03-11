@@ -238,6 +238,7 @@ function Home() {
 
       <footer className={styles.footer}>
         <p>&copy; 2026 E-Bus Pass. Intelligent Transportation solutions.</p>
+        <p className={styles.developerCredit}>Developed by Sathish and team CSE</p>
       </footer>
     </div>
   );

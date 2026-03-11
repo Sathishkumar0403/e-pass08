@@ -485,6 +485,15 @@
   padding: 3rem 2rem 5rem;
   color: #080808;
   font-size: 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.developerCredit {
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.025em;
 }
 
 /* Mobile Responsive */
