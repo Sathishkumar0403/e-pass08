@@ -1,7 +1,7 @@
 .pageWrapper {
   min-height: 100vh;
   position: relative;
-  overflow-x: hidden;
+  overflow: visible;
   background: #fdfdfd;
   background-image: linear-gradient(rgba(253, 253, 253, 0.4), rgba(253, 253, 253, 0.4)), url('../assets/college-bg.jpg');
   background-size: cover;
