@@ -539,35 +539,33 @@ app.post('/api/student/request-cancellation', async (req, res) => {
 
 app.get('/api/student/get-fee/:route', async (req, res) => {
   try {
-    const studentRoute = decodeURIComponent(req.params.route).toLowerCase();
+    const rawRoute = decodeURIComponent(req.params.route).toLowerCase();
     const routeFees = await req.mongo.collection('route_fees').find({}).toArray();
     
-    // Fuzzy matching logic
-    const destPart = studentRoute.includes(' - ')
-      ? studentRoute.split(' - ').slice(1).join(' - ').trim()
-      : studentRoute;
+    // Normalize student route: remove common filler words and punctuation
+    const normalize = s => s.toLowerCase().replace(/[.,-\/#!$%\^&\*;:{}=\-_`~()]/g, " ").replace(/\s+/g, " ").trim();
+    const sRoute = normalize(rawRoute);
+    const sWords = sRoute.split(" ").filter(w => w.length > 2 && w !== "college");
+
     let bestFee = null;
-    let maxScore = 0;
+    let maxScore = -1;
 
     for (const fee of routeFees) {
-      const feeRoute = (fee.route || '').toLowerCase();
-      const feeTo = (fee.to || feeRoute).toLowerCase();
+      const fTo = normalize(fee.to || fee.route || "");
+      const fRoute = normalize(fee.route || fee.to || "");
       
-      // Perfect match priority
-      if (feeRoute === studentRoute || feeTo === studentRoute) {
+      if (fTo === sRoute || fRoute === sRoute) {
         bestFee = fee;
         maxScore = 999;
         break;
       }
-      
-      // Check how many of the FEE'S keywords are found in the STUDENT'S route
-      const feeKeywords = [...new Set([...feeTo.split(/[,\s]+/), ...feeRoute.split(/[,\s]+/)])]
-        .filter(w => w.length > 2 && w !== 'college');
-      
-      if (feeKeywords.length === 0) continue;
 
-      const matches = feeKeywords.filter(kw => studentRoute.includes(kw)).length;
-      const score = (matches / feeKeywords.length) + (matches * 0.1); 
+      const fWords = [...new Set([...fTo.split(" "), ...fRoute.split(" ")])].filter(w => w.length > 2 && w !== "college");
+      if (fWords.length === 0) continue;
+
+      // Calculate how many admin keywords are in the student's route
+      const matches = fWords.filter(kw => sRoute.includes(kw)).length;
+      const score = matches / fWords.length;
 
       if (matches > 0 && score > maxScore) {
         maxScore = score;

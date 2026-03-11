@@ -204,7 +204,7 @@ function StudentDashboard() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              amount: amount
+              amount: studentData.fee_amount || routeFee?.fee_amount || amount
             });
             const updatedStatus = await getPaymentStatus(studentData.regNo);
             setPaymentStatus(updatedStatus);
@@ -350,7 +350,9 @@ function StudentDashboard() {
                 </div>
 
                 <div className={styles.passVisual}>
-                  {studentData.status === 'approved' && paymentStatus.payment_status === 'verified' && !cancellationStatus.isCancelled ? (
+                  {studentData.status === 'approved' && 
+                   (paymentStatus.payment_status === 'verified' || studentData.payment_status === 'verified') && 
+                   !cancellationStatus.isCancelled ? (
                     <BusPassTemplate studentData={studentData} />
                   ) : (
                     <div className={styles.statusBox}>
