@@ -281,9 +281,10 @@ app.get('/api/admin/bus-seat-counts', async (req, res) => {
     const routes = await req.mongo.collection('bus_routes').find({}).toArray();
     const counts = {};
     for (const r of routes) {
+      // Count all applications filled for this bus, excluding rejected/cancelled ones
       const taken = await req.applications.countDocuments({
-        $or: [{ busNumber: r.bus_number }, { route: r.route }],
-        status: 'approved'
+        busNumber: r.bus_number,
+        status: { $nin: ['rejected', 'cancelled'] }
       });
       counts[r.bus_number] = taken;
     }

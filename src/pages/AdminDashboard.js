@@ -123,6 +123,8 @@ function AdminDashboard() {
           department: adminUser.department || ''
         });
         setApplications(apps);
+        // Also refresh seat counts when apps change
+        getBusSeatCounts().then(setBusSeatCounts).catch(() => {});
         setFetchingApps(false);
       }
 
