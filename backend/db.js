@@ -15,40 +15,51 @@ try {
 
 let cachedClient = global.mongoClient || null;
 let cachedDb = global.mongoDb || null;
+let cachedPromise = global.mongoPromise || null;
 
 export async function connectDB() {
   if (cachedDb) return cachedDb;
+  if (cachedPromise) return cachedPromise;
   
   const uri = process.env.MONGODB_URI;
   if (!uri) {
+    console.error("CRITICAL: MONGODB_URI is not defined in environment variables!");
     throw new Error("MONGODB_URI is not defined.");
   }
 
   if (!cachedClient) {
-    console.log("Creating new MongoClient...");
+    console.log("Creating new MongoClient instance...");
     cachedClient = new MongoClient(uri, {
       serverApi: {
         version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
       },
-      connectTimeoutMS: 10000,
-      serverSelectionTimeoutMS: 10000
+      connectTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 30000,
+      maxPoolSize: 10
     });
     global.mongoClient = cachedClient;
   }
-  try {
-    console.log("Connecting to MongoDB Atlas...");
-    await cachedClient.connect();
-    cachedDb = cachedClient.db("ebuspass");
-    global.mongoDb = cachedDb;
-    console.log("Connected to MongoDB Atlas successfully!");
-    
-    return cachedDb;
-  } catch (err) {
-    console.error("Failed to connect to MongoDB:", err.message);
-    throw err;
-  }
+
+  console.log("Starting MongoDB connection promise...");
+  cachedPromise = cachedClient.connect()
+    .then(client => {
+      console.log("Connected to MongoDB Atlas successfully!");
+      cachedDb = client.db("ebuspass");
+      global.mongoDb = cachedDb;
+      return cachedDb;
+    })
+    .catch(err => {
+      console.error("Failed to connect to MongoDB:", err.message);
+      global.mongoPromise = null; // Reset promise on failure
+      cachedPromise = null;
+      throw err;
+    });
+
+  global.mongoPromise = cachedPromise;
+  return cachedPromise;
 }
 
 async function seedMongoDB(db) {
@@ -102,6 +113,6 @@ async function seedMongoDB(db) {
 }
 
 export function getDB() {
-  if (!db) throw new Error("Database not connected. Call connectDB first.");
-  return db;
+  if (!cachedDb) throw new Error("Database not connected. Call connectDB first.");
+  return cachedDb;
 }

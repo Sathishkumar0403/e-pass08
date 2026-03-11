@@ -126,8 +126,18 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal server error', details: err.message });
+  console.error('SERVER ERROR:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
+  
+  const status = err.status || 500;
+  res.status(status).json({ 
+    error: err.message || 'Internal server error',
+    details: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+  });
 });
 
 // Initialize and start listening
