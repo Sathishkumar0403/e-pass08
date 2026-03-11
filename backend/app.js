@@ -104,7 +104,7 @@ app.use('/api/uploads', express.static(tmpUploads));
 
 // Catch-all to serve React's index.html (Only in local)
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  app.get('*', (req, res) => {
+  app.get('/{*path}', (req, res) => {
     if (req.path.includes('.') && !req.path.endsWith('.html')) {
       return res.status(404).json({ error: 'File not found' });
     }
@@ -138,7 +138,9 @@ async function startServer() {
     console.log("MongoDB is READY.");
 
     const PORT = process.env.PORT || 3001;
-    app.listen(PORT, '0.0.0.0', () => {
+    const http = require('http');
+    const server = http.createServer({ maxHeaderSize: 65536 }, app);
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`\n🚀 EVERYTHING RUNNING ON PORT ${PORT}`);
     });
   } catch (err) {

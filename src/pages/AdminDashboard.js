@@ -24,7 +24,8 @@ import {
   FaFilter,
   FaUserGraduate,
   FaBullhorn,
-  FaShieldAlt
+  FaShieldAlt,
+  FaBars
 } from 'react-icons/fa';
 import {
   getApplications,
@@ -108,6 +109,7 @@ function AdminDashboard() {
   const [editingApplication, setEditingApplication] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [systemSettings, setSystemSettings] = useState({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   const refreshData = useCallback(async (type = 'all') => {
@@ -486,7 +488,22 @@ function AdminDashboard() {
 
   return (
     <div className={styles.dashboardContainer}>
-      <aside className={styles.sidebar}>
+      {/* Mobile hamburger toggle */}
+      <button
+        className={styles.menuToggle}
+        onClick={() => setSidebarOpen(prev => !prev)}
+        aria-label="Toggle navigation"
+      >
+        {sidebarOpen ? <FaTimes /> : <FaBars />}
+      </button>
+
+      {/* Dark overlay behind sidebar on mobile */}
+      <div
+        className={`${styles.sidebarOverlay} ${sidebarOpen ? styles.active : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.open : ''}`}>
         <div className={styles.sidebarHeader}>
           <div className={styles.logoBox}>EP</div>
           <span className={styles.logoLabel}>E-PASS ADMIN</span>
@@ -504,9 +521,9 @@ function AdminDashboard() {
             <button
               key={item.id}
               className={`${styles.navItem} ${activeTab === item.id ? styles.navActive : ''}`}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
             >
-              <item.icon /> {item.label}
+              <item.icon /> <span>{item.label}</span>
             </button>
           ))}
         </div>

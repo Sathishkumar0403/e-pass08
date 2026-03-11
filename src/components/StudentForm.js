@@ -132,7 +132,7 @@ function StudentForm() {
 
       const res = await applyStudent(submitData);
 
-      if (res.message === 'Application submitted successfully') {
+      if (res.message === 'Application submitted' || res.message === 'Application submitted successfully' || res.id) {
         setMessage('Application submitted successfully!');
         setForm(INITIAL_FORM_STATE);
         window.scrollTo({ top: 0, behavior: 'smooth' });
