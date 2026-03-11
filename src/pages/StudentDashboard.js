@@ -110,7 +110,8 @@ function StudentDashboard() {
         setError(response.error);
         setStudentData(null);
       } else {
-        setStudentData(response);
+        const student = response.student || response;
+        setStudentData(student);
         setError('');
       }
     } catch (err) {
@@ -326,7 +327,7 @@ function StudentDashboard() {
           >
             <div className={styles.dashboardHeader}>
               <div className={styles.userInfo}>
-                <h2 className={styles.welcomeText}>Hello, <span className={styles.nameHighlight}>{studentData.name.split(' ')[0]}</span></h2>
+                <h2 className={styles.welcomeText}>Hello, <span className={styles.nameHighlight}>{(studentData.name || '').split(' ')[0]}</span></h2>
                 <p className={styles.userSubText}>Manage your transportation pass and services</p>
               </div>
               <button onClick={logout} className={styles.logoutBtn}><FaArrowLeft /> Logout</button>
