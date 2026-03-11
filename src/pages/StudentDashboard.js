@@ -10,7 +10,7 @@ import styles from './StudentDashboard.module.css';
 import {
   studentLogin, uploadFeesBill, requestPassCancellation,
   checkCancellationStatus, createPaymentOrder, verifyPayment,
-  getPaymentStatus, getRouteFee, getSystemSettings
+  getPaymentStatus, getRouteFee, getSystemSettings, getStudentStatus
 } from '../utils/api';
 import BusPassTemplate from '../components/BusPassTemplate';
 import { downloadBusPass } from '../utils/downloadPass';
