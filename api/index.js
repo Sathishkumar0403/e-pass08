@@ -94,9 +94,34 @@ app.get('/api/admin/applications', async (req, res) => {
 app.post('/api/admin/approve', async (req, res) => {
   try {
     const { id } = req.body;
+    const appRecord = await req.applications.findOne({ _id: new ObjectId(id) });
+    if (!appRecord) return res.status(404).json({ error: 'Application not found' });
+
+    // Pass Generation Logic
+    const currentYear = new Date().getFullYear();
+    const count = await req.applications.countDocuments({ passNumber: { $ne: null } });
+    const passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+    
+    // Basic QR data for frontend
+    const qrData = JSON.stringify({
+      name: appRecord.name,
+      regNo: appRecord.regNo || appRecord.reg_no,
+      route: appRecord.route,
+      passNumber,
+      approvedAt: new Date().toISOString()
+    });
+
     await req.applications.updateOne(
-      { _id: new ObjectId(id) }, { $set: { status: 'approved', updatedAt: new Date().toISOString() } });
-    res.json({ message: 'Approved' });
+      { _id: new ObjectId(id) }, 
+      { $set: { 
+          status: 'approved', 
+          passNumber, 
+          qrData, 
+          updatedAt: new Date().toISOString() 
+        } 
+      }
+    );
+    res.json({ message: 'Approved successfully', passNumber });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -104,8 +129,10 @@ app.post('/api/admin/reject', async (req, res) => {
   try {
     const { id, reason } = req.body;
     await req.applications.updateOne(
-      { _id: new ObjectId(id) }, { $set: { status: 'rejected', rejection_reason: reason, updatedAt: new Date().toISOString() } });
-    res.json({ message: 'Rejected' });
+      { _id: new ObjectId(id) }, 
+      { $set: { status: 'rejected', rejection_reason: reason, updatedAt: new Date().toISOString() } }
+    );
+    res.json({ message: 'Rejected successfully' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -136,9 +163,25 @@ app.get('/api/admin/payment-details', async (req, res) => {
 app.post('/api/admin/approve-payment-pass', async (req, res) => {
   try {
     const { id } = req.body;
+    const appRecord = await req.applications.findOne({ _id: new ObjectId(id) });
+    if (!appRecord) return res.status(404).json({ error: 'Application not found' });
+
+    // Pass Generation Logic
+    const currentYear = new Date().getFullYear();
+    const count = await req.applications.countDocuments({ passNumber: { $ne: null } });
+    const passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+
     await req.applications.updateOne(
-      { _id: new ObjectId(id) }, { $set: { pass_approved: true, status: 'approved', updatedAt: new Date().toISOString() } });
-    res.json({ message: 'Pass approved' });
+      { _id: new ObjectId(id) }, 
+      { $set: { 
+          pass_approved: true, 
+          status: 'approved', 
+          passNumber, 
+          updatedAt: new Date().toISOString() 
+        } 
+      }
+    );
+    res.json({ message: 'Pass approved and issued' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -235,6 +278,13 @@ app.get('/api/admin/bus-seat-counts', async (req, res) => {
 
 // Settings
 app.get('/api/admin/settings', async (req, res) => {
+  try {
+    const settings = await req.mongo.collection('system_settings').find({}).toArray();
+    res.json(settings.map(s => ({ key: s.key, value: s.value })));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/student/system-settings', async (req, res) => {
   try {
     const settings = await req.mongo.collection('system_settings').find({}).toArray();
     res.json(settings.map(s => ({ key: s.key, value: s.value })));

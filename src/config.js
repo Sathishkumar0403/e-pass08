@@ -27,8 +27,8 @@ export const FALLBACK_API_URLS = isLocal ? ['http://localhost:3001/api', 'http:/
 export const getImageUrl = (path) => {
   if (!path) return '';
   if (path.startsWith('blob:')) return path;
-  // If already a full absolute URL (from backend), return as-is
-  if (path.startsWith('http://') || path.startsWith('https://')) {
+  // If already a full absolute URL or data URI, return as-is
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
     // In development, backend returns http://localhost:3001/uploads/...
     // This should work directly
     return path;
