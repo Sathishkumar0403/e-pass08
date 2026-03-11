@@ -1,13 +1,10 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-import ExcelJS from 'exceljs';
-import { ObjectId } from 'mongodb';
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const ExcelJS = require('exceljs');
+const { ObjectId } = require('mongodb');
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Admin/Staff login route
 router.post('/login', async (req, res) => {
@@ -499,4 +496,4 @@ router.post('/update-setting', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

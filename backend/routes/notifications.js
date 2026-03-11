@@ -1,5 +1,5 @@
-import express from 'express';
-import { ObjectId } from 'mongodb';
+const express = require('express');
+const { ObjectId } = require('mongodb');
 
 const router = express.Router();
 
@@ -60,4 +60,4 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-export default router;
+module.exports = router;

@@ -1,14 +1,11 @@
-import express from "express";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import Razorpay from "razorpay";
-import crypto from "crypto";
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Helper to get Razorpay instance
 function getRazorpayInstance() {
@@ -495,5 +492,5 @@ router.get('/payment-status/:regNo', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;
 

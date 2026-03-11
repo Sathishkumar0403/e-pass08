@@ -1,33 +1,28 @@
-import dotenv from 'dotenv';
-import path from 'path';
+const dotenv = require('dotenv');
+const path = require('path');
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const fs = require('fs');
 
-import express from 'express';
-import cors from 'cors';
-import bodyParser from 'body-parser';
-import { fileURLToPath } from 'url';
-import { connectDB } from './db.js';
-import fs from 'fs';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load .env before local imports to ensure variables are available
+// Load .env before local imports
 try {
   dotenv.config({ path: path.join(__dirname, '..', '.env') });
 } catch (e) {
   // Silent fail
 }
 
-import studentRoutes from './routes/student.js';
-import adminRoutes from './routes/admin.js';
-import notificationRoutes from './routes/notifications.js';
+const { connectDB } = require('./db.js');
+const studentRoutes = require('./routes/student.js');
+const adminRoutes = require('./routes/admin.js');
+const notificationRoutes = require('./routes/notifications.js');
 
 const app = express();
 
 // CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    callback(null, true); // Allow all origins in development
+    callback(null, true); 
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
@@ -49,7 +44,7 @@ app.use((req, res, next) => {
 
 let mongodb = null;
 
-// Database Connection Middleware (MUST be before routes)
+// Database Connection Middleware
 app.use(async (req, res, next) => {
   try {
     if (!mongodb) {
@@ -57,7 +52,6 @@ app.use(async (req, res, next) => {
     }
     req.mongo = mongodb;
     
-    // Unified helper for backward compatibility
     req.getCollection = (name) => {
       if (mongodb) return mongodb.collection(name);
       return null;
@@ -73,12 +67,6 @@ app.use(async (req, res, next) => {
     }
   }
 });
-
-// Static files (React build)
-const buildPath = path.join(__dirname, '..', 'build');
-if (process.env.NODE_ENV !== 'production') {
-  app.use(express.static(buildPath));
-}
 
 // Routes
 app.use('/api/student', studentRoutes);
@@ -99,6 +87,9 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Static files (React build)
+const buildPath = path.join(__dirname, '..', 'build');
+
 // Serve uploaded images statically
 const backendUploads = path.join(__dirname, 'uploads');
 const rootUploads = path.join(__dirname, '..', 'uploads');
@@ -111,7 +102,7 @@ app.use('/api/uploads', express.static(backendUploads));
 app.use('/api/uploads', express.static(rootUploads));
 app.use('/api/uploads', express.static(tmpUploads));
 
-// Catch-all to serve React's index.html (Only in dev/local)
+// Catch-all to serve React's index.html (Only in local)
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   app.get('*', (req, res) => {
     if (req.path.includes('.') && !req.path.endsWith('.html')) {
@@ -163,4 +154,4 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   startServer();
 }
 
-export default app;
+module.exports = app;

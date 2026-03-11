@@ -8,7 +8,7 @@ const BACKEND_BASE = (() => {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return `${protocol}//${hostname}:3001`;
     }
-    // On production (e.g. Vercel), the backend is at the same origin
+// On production (e.g. Vercel), the backend is at the same origin
     return '';
   }
   return '';
@@ -17,11 +17,11 @@ const BACKEND_BASE = (() => {
 // API configuration
 export const API_BASE_URL = `${BACKEND_BASE}/api`;
 
-// Backup API URLs only if on localhost
+// Backup API URLs are ONLY for local development
 const isLocal = typeof window !== 'undefined' && 
                 (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-export const FALLBACK_API_URLS = isLocal ? ['http://localhost:3001/api', 'http://127.0.0.1:3001/api'] : [];
+export const FALLBACK_API_URLS = []; 
 
 // Image URL helper
 export const getImageUrl = (path) => {
