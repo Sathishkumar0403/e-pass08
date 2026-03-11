@@ -222,6 +222,7 @@
   right: 0;
   bottom: 0;
   width: 340px;
+  height: 100dvh; /* Use dynamic viewport height for mobile */
   background: white; /* Force solid white background */
   z-index: 1002;
   box-shadow: -20px 0 60px rgba(0, 0, 0, 0.2);
