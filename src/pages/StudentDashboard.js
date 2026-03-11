@@ -60,13 +60,14 @@ function StudentDashboard() {
     try {
       // 1. Refresh full student object from database
       const updatedStudent = await getStudentStatus(studentData.regNo);
+      let currentStudent = studentData;
       if (updatedStudent && !updatedStudent.error) {
-        const student = updatedStudent.student || updatedStudent;
-        setStudentData(student);
+        currentStudent = updatedStudent.student || updatedStudent;
+        setStudentData(currentStudent);
       }
 
       // 2. Refresh cancellation status
-      const status = await checkCancellationStatus(studentData.regNo);
+      const status = await checkCancellationStatus(currentStudent.regNo || studentData.regNo);
       setCancellationStatus({
         cancellationRequested: status.cancellationRequested,
         cancellationReason: status.cancellationReason,
@@ -74,7 +75,7 @@ function StudentDashboard() {
       });
 
       try {
-        const paymentData = await getPaymentStatus(studentData.regNo);
+        const paymentData = await getPaymentStatus(currentStudent.regNo || studentData.regNo);
         setPaymentStatus(paymentData);
       } catch (err) {
         setPaymentStatus({
@@ -84,14 +85,14 @@ function StudentDashboard() {
           payment_date: null
         });
       }
-      if (studentData.route) {
+
+      if (currentStudent.route) {
         try {
-          const fee = await getRouteFee(studentData.route);
+          const fee = await getRouteFee(currentStudent.route);
           if (fee && fee.fee_amount > 0) {
             setRouteFee(fee);
-          } else if (studentData.fee_amount) {
-            // Fallback to student's own record if automatic lookup fails
-            setRouteFee({ fee_amount: studentData.fee_amount });
+          } else if (currentStudent.fee_amount) {
+            setRouteFee({ fee_amount: currentStudent.fee_amount });
           } else {
             setRouteFee(null);
           }

@@ -545,7 +545,9 @@ app.get('/api/student/get-fee/:route', async (req, res) => {
     // Normalize logic: keep only significant alphanumeric words
     const clean = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
     const sClean = clean(rawRoute);
-    const sWords = sClean.split(" ").filter(w => w.length > 2);
+    
+    // Ignore common geographical noise
+    const noise = ["india", "tamil", "nadu", "krishnagiri", "district", "college", "university", "transport", "street", "road", "near", "landmark", "opp", "opposite"];
 
     let bestFee = null;
     let maxMatches = 0;
@@ -556,21 +558,28 @@ app.get('/api/student/get-fee/:route', async (req, res) => {
         ...clean(fee.route || "").split(" "),
         ...clean(fee.to || "").split(" "),
         ...clean(fee.from || "").split(" ")
-      ])].filter(w => w.length > 2 && !["india", "tamil", "nadu", "krishnagiri", "district", "college", "university", "transport", "street", "road", "near"].includes(w));
+      ])].filter(w => w.length > 2 && !noise.includes(w));
       
       if (feeKeywords.length === 0) continue;
 
       // Count how many of the fee's defining keywords are found in the student's route string
       const matches = feeKeywords.filter(kw => sClean.includes(kw)).length;
       
-      if (matches >= 1 && matches > maxMatches) {
-        maxMatches = matches;
-        bestFee = fee;
+      if (matches >= 1) {
+        if (matches > maxMatches) {
+          maxMatches = matches;
+          bestFee = fee;
+        } else if (matches === maxMatches) {
+          // Tie-breaker: pick the highest fee amount if routes are identical/overlapping
+          if (!bestFee || (Number(fee.fee_amount) > Number(bestFee.fee_amount))) {
+            bestFee = fee;
+          }
+        }
       }
     }
 
     if (bestFee) {
-      console.log(`[Fee Match] SUCCESS for "${rawRoute}". Found match: ${bestFee.to}. Amount: ${bestFee.fee_amount}`);
+      console.log(`[Fee Match] SUCCESS for "${rawRoute}". Normalized: "${sClean}". Matched: ${bestFee.to}. Amount: ${bestFee.fee_amount}`);
       res.json(bestFee);
     } else {
       console.log(`[Fee Match] FAIL for "${rawRoute}". No match in ${allFees.length} records.`);
