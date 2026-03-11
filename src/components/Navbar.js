@@ -166,48 +166,52 @@ function Navbar() {
               </div>
               
               <div className={styles.mobileNavContent}>
-                <div className={styles.mobileSectionTitle}>Main Menu</div>
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`${styles.mobileNavLink} ${isActive ? styles.mobileActiveLink : ''}`}
-                      onClick={closeMobileMenu}
-                    >
-                      <Icon className={styles.mobileNavIcon} />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
+                <div className={styles.mobileSectionTitle}>Quick Access</div>
+                
+                {/* Home Button */}
+                <Link
+                  to="/"
+                  className={`${styles.mobileNavLink} ${styles.mobilePortalBtn} ${location.pathname === '/' ? styles.mobileActiveLink : ''}`}
+                  onClick={closeMobileMenu}
+                >
+                  <div className={styles.portalIconWrapper}>
+                    <FaHome />
+                  </div>
+                  <div className={styles.portalText}>
+                    <span className={styles.portalLabel}>Home Page</span>
+                    <span className={styles.portalDesc}>Return to Landing</span>
+                  </div>
+                </Link>
 
-                <div className={styles.mobileDropdownSection}>
-                  <div className={styles.mobileSectionTitle}>Portals & Login</div>
-                  {portalItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`${styles.mobileNavLink} ${styles.mobilePortalBtn} ${isActive ? styles.mobileActiveLink : ''}`}
-                        onClick={closeMobileMenu}
-                      >
-                        <div className={styles.portalIconWrapper}>
-                          <Icon />
-                        </div>
-                        <div className={styles.portalText}>
-                          <span className={styles.portalLabel}>{item.label}</span>
-                          <span className={styles.portalDesc}>
-                            {item.label === 'Student' ? 'Pass Management' : 'Admin & Staff'}
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
+                {/* Student Login Button */}
+                <Link
+                  to="/student"
+                  className={`${styles.mobileNavLink} ${styles.mobilePortalBtn} ${location.pathname === '/student' ? styles.mobileActiveLink : ''}`}
+                  onClick={closeMobileMenu}
+                >
+                  <div className={styles.portalIconWrapper}>
+                    <FaUserGraduate />
+                  </div>
+                  <div className={styles.portalText}>
+                    <span className={styles.portalLabel}>Student Login</span>
+                    <span className={styles.portalDesc}>Pass Management</span>
+                  </div>
+                </Link>
+
+                {/* Official Login Button */}
+                <Link
+                  to="/admin"
+                  className={`${styles.mobileNavLink} ${styles.mobilePortalBtn} ${location.pathname === '/admin' ? styles.mobileActiveLink : ''}`}
+                  onClick={closeMobileMenu}
+                >
+                  <div className={styles.portalIconWrapper}>
+                    <FaUserShield />
+                  </div>
+                  <div className={styles.portalText}>
+                    <span className={styles.portalLabel}>Official Login</span>
+                    <span className={styles.portalDesc}>Admin & Staff</span>
+                  </div>
+                </Link>
               </div>
 
               <div className={styles.mobileNavFooter}>
