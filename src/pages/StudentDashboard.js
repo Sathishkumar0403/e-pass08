@@ -423,7 +423,7 @@ function StudentDashboard() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleDownload}
                     className={styles.actionBtn}
-                    disabled={isDownloading || cancellationStatus.isCancelled || studentData.status !== 'approved' || paymentStatus.payment_status !== 'verified'}
+                    disabled={isDownloading || cancellationStatus.isCancelled || studentData.status !== 'approved' || (paymentStatus.payment_status !== 'verified' && studentData.payment_status !== 'verified')}
                   >
                     <div className={styles.actionIcon}><FaDownload /></div>
                     <div className={styles.actionText}>

@@ -17,43 +17,44 @@ export const downloadBusPass = async (elementId, filename = 'bus-pass') => {
       });
     }));
 
+    // Wait 500ms to ensure all dynamic elements are settled
+    await new Promise(r => setTimeout(r, 500));
+
     // Create canvas from the element
     const canvas = await html2canvas(element, {
       backgroundColor: '#ffffff',
-      scale: 3, 
+      scale: 2, 
       useCORS: true,
       logging: false,
+      allowTaint: false,
+      proxy: null,
       width: element.offsetWidth,
       height: element.offsetHeight,
-      imageTimeout: 15000,
+      onclone: (doc) => {
+        // Hide effects that might interfere with capture
+        const clonedHologram = doc.querySelector('[class*="hologram"]');
+        if (clonedHologram) clonedHologram.style.display = 'none';
+      }
     });
 
-    // Convert canvas to PNG blob
-    return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          reject(new Error('Failed to create image blob'));
-          return;
-        }
+    // Manual download trigger for better cross-browser support
+    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.href = dataUrl;
+    link.download = `${filename}.png`;
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    // Slight delay before removing to ensure trigger works on all browsers
+    setTimeout(() => {
+      document.body.removeChild(link);
+    }, 500);
 
-        // Create download link
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${filename}.png`;
-        
-        // Trigger download
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        resolve();
-      }, 'image/png');
-    });
+    return Promise.resolve();
   } catch (error) {
-    console.error('Error downloading bus pass:', error);
+    console.error('Download Pass Error:', error);
     throw error;
   }
 };

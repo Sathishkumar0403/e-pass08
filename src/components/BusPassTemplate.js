@@ -1,6 +1,6 @@
 import React from 'react';
 import styles from './BusPassTemplate.module.css';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { FaBus, FaShieldAlt } from 'react-icons/fa';
 import { getImageUrl } from '../config';
 
@@ -100,7 +100,7 @@ function BusPassTemplate({ studentData }) {
 
           <div className={styles.qrSection}>
             <div className={styles.qrWrapper}>
-              <QRCodeSVG
+              <QRCodeCanvas
                 value={qrValue}
                 size={110}
                 level="H"
