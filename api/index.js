@@ -173,13 +173,23 @@ app.post('/api/admin/approve-payment-pass', async (req, res) => {
     const count = await req.applications.countDocuments({ passNumber: { $ne: null } });
     const passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
 
+    // QR data for the pass
+    const qrData = JSON.stringify({
+      name: appRecord.name,
+      regNo: appRecord.regNo || appRecord.reg_no,
+      route: appRecord.route,
+      passNumber,
+      approvedAt: new Date().toISOString()
+    });
+
     await req.applications.updateOne(
       { _id: new ObjectId(id) }, 
       { $set: { 
           pass_approved: true, 
           status: 'approved', 
           payment_status: 'verified',
-          passNumber, 
+          passNumber,
+          qrData,
           updatedAt: new Date().toISOString() 
         } 
       }
