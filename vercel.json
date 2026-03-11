@@ -1,7 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "api/*.mjs": {
+    "api/*.js": {
       "maxDuration": 30,
       "memory": 1024
     }
@@ -9,7 +9,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.mjs"
+      "destination": "/api/index.js"
     },
     {
       "source": "/((?!api/).*)",
