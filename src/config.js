@@ -4,10 +4,11 @@
 const BACKEND_BASE = (() => {
   if (typeof window !== 'undefined') {
     const { protocol, hostname, port } = window.location;
-    // If dev (not port 3001 and not standard empty port), backend is on 3001
-    if (process.env.NODE_ENV === 'development' || (port && port !== '3001' && port !== '80' && port !== '443')) {
+    // Strictly stay on the same host if not localhost
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return `${protocol}//${hostname}:3001`;
     }
+    // On production (e.g. Vercel), the backend is at the same origin
     return '';
   }
   return '';
@@ -16,10 +17,11 @@ const BACKEND_BASE = (() => {
 // API configuration
 export const API_BASE_URL = `${BACKEND_BASE}/api`;
 
-// Backup API URLs if main one fails (only in development)
-export const FALLBACK_API_URLS = process.env.NODE_ENV === 'development' 
-  ? ['http://localhost:3001/api', 'http://127.0.0.1:3001/api']
-  : [];
+// Backup API URLs only if on localhost
+const isLocal = typeof window !== 'undefined' && 
+                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+export const FALLBACK_API_URLS = isLocal ? ['http://localhost:3001/api', 'http://127.0.0.1:3001/api'] : [];
 
 // Image URL helper
 export const getImageUrl = (path) => {
