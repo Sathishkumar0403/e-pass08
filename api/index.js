@@ -219,6 +219,8 @@ app.post('/api/admin/route-fees', async (req, res) => {
   try {
     const data = { ...req.body, created_at: new Date().toISOString() };
     data.fee_amount = Number(data.fee_amount);
+    // Ensure route uniquely identifies the fee record if not provided
+    if (!data.route && data.to) data.route = data.to;
     const result = await req.mongo.collection('route_fees').insertOne(data);
     res.json({ id: result.insertedId, message: 'Route fee added' });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -544,10 +546,8 @@ app.get('/api/student/get-fee/:route', async (req, res) => {
     const destPart = studentRoute.includes(' - ')
       ? studentRoute.split(' - ').slice(1).join(' - ').trim()
       : studentRoute;
-    const destWords = destPart.split(/[,\s]+/).filter(w => w.length > 2);
-
     let bestFee = null;
-    let maxMatches = 0;
+    let maxScore = 0;
 
     for (const fee of routeFees) {
       const feeRoute = (fee.route || '').toLowerCase();
@@ -556,14 +556,21 @@ app.get('/api/student/get-fee/:route', async (req, res) => {
       // Perfect match priority
       if (feeRoute === studentRoute || feeTo === studentRoute) {
         bestFee = fee;
-        maxMatches = 999;
+        maxScore = 999;
         break;
       }
       
-      // Keyword matching score
-      const matchCount = destWords.filter(w => feeTo.includes(w) || feeRoute.includes(w)).length;
-      if (matchCount > maxMatches) {
-        maxMatches = matchCount;
+      // Check how many of the FEE'S keywords are found in the STUDENT'S route
+      const feeKeywords = [...new Set([...feeTo.split(/[,\s]+/), ...feeRoute.split(/[,\s]+/)])]
+        .filter(w => w.length > 2 && w !== 'college');
+      
+      if (feeKeywords.length === 0) continue;
+
+      const matches = feeKeywords.filter(kw => studentRoute.includes(kw)).length;
+      const score = (matches / feeKeywords.length) + (matches * 0.1); 
+
+      if (matches > 0 && score > maxScore) {
+        maxScore = score;
         bestFee = fee;
       }
     }
@@ -583,8 +590,23 @@ app.post('/api/student/upload-fees-bill', upload.single('feesBill'), async (req,
     // Try to get fee amount if not already set
     let feeAmount = student.fee_amount || student.amount;
     if (!feeAmount && student.route) {
-      const feeRecord = await req.mongo.collection('route_fees').findOne({ route: { $regex: new RegExp(student.route, 'i') } });
-      if (feeRecord) feeAmount = feeRecord.fee_amount;
+      const routeKeywords = student.route.toLowerCase().split(/[,\s]+/).filter(w => w.length > 2);
+      const allFees = await req.mongo.collection('route_fees').find({}).toArray();
+      let bestFee = null;
+      let maxScore = 0;
+      
+      for (const fee of allFees) {
+        const feeTo = (fee.to || fee.route || '').toLowerCase();
+        const kw = feeTo.split(/[,\s]+/).filter(f => f.length > 2 && f !== 'college');
+        if (kw.length === 0) continue;
+        const matches = kw.filter(k => student.route.toLowerCase().includes(k)).length;
+        const score = matches / kw.length;
+        if (matches > 0 && score > maxScore) {
+          maxScore = score;
+          bestFee = fee;
+        }
+      }
+      if (bestFee) feeAmount = bestFee.fee_amount;
     }
 
     await req.applications.updateOne(
