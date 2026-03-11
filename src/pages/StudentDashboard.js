@@ -445,8 +445,8 @@ function StudentDashboard() {
                         {(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified') ? 'Fees Paid ✓' : 'Pay Pass Fees'}
                       </span>
                       <span className={styles.desc}>
-                        {(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified')
-                          ? `Payment ID: ${paymentStatus.payment_id || 'N/A'}`
+                        {(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified' || studentData.payment_status === 'verified')
+                          ? `Payment ID: ${paymentStatus.payment_id || 'Verified'}`
                           : (routeFee?.fee_amount || studentData?.fee_amount)
                             ? `₹${routeFee?.fee_amount || studentData?.fee_amount} · Secure online payment`
                             : 'Secure online payment'}
