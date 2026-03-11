@@ -58,6 +58,14 @@ function StudentDashboard() {
     if (!studentData?.regNo) return;
 
     try {
+      // 1. Refresh full student object from database
+      const updatedStudent = await getStudentStatus(studentData.regNo);
+      if (updatedStudent && !updatedStudent.error) {
+        const student = updatedStudent.student || updatedStudent;
+        setStudentData(student);
+      }
+
+      // 2. Refresh cancellation status
       const status = await checkCancellationStatus(studentData.regNo);
       setCancellationStatus({
         cancellationRequested: status.cancellationRequested,

@@ -547,19 +547,24 @@ app.get('/api/student/get-fee/:route', async (req, res) => {
     const destWords = destPart.split(/[,\s]+/).filter(w => w.length > 2);
 
     let bestFee = null;
+    let maxMatches = 0;
+
     for (const fee of routeFees) {
       const feeRoute = (fee.route || '').toLowerCase();
       const feeTo = (fee.to || feeRoute).toLowerCase();
       
+      // Perfect match priority
       if (feeRoute === studentRoute || feeTo === studentRoute) {
         bestFee = fee;
+        maxMatches = 999;
         break;
       }
       
+      // Keyword matching score
       const matchCount = destWords.filter(w => feeTo.includes(w) || feeRoute.includes(w)).length;
-      if (matchCount > 0 && matchCount >= Math.min(2, destWords.length)) {
+      if (matchCount > maxMatches) {
+        maxMatches = matchCount;
         bestFee = fee;
-        break;
       }
     }
 
