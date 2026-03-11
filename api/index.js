@@ -176,6 +176,7 @@ app.post('/api/admin/approve-payment-pass', async (req, res) => {
       { $set: { 
           pass_approved: true, 
           status: 'approved', 
+          payment_status: 'verified',
           passNumber, 
           updatedAt: new Date().toISOString() 
         } 
@@ -462,7 +463,12 @@ app.post('/api/student/create-payment-order', async (req, res) => {
     const rz = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET });
     const { amount, regNo } = req.body;
     const order = await rz.orders.create({ amount: Math.round(amount * 100), currency: 'INR', receipt: regNo });
-    res.json(order);
+    res.json({
+      orderId: order.id,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      amount: amount,
+      currency: 'INR'
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -492,9 +498,33 @@ app.post('/api/student/request-cancellation', async (req, res) => {
 
 app.get('/api/student/get-fee/:route', async (req, res) => {
   try {
-    const route = decodeURIComponent(req.params.route);
-    const fee = await req.mongo.collection('route_fees').findOne({ route: { $regex: new RegExp(route, 'i') } });
-    res.json(fee || { fee_amount: 0 });
+    const studentRoute = decodeURIComponent(req.params.route).toLowerCase();
+    const routeFees = await req.mongo.collection('route_fees').find({}).toArray();
+    
+    // Fuzzy matching logic
+    const destPart = studentRoute.includes(' - ')
+      ? studentRoute.split(' - ').slice(1).join(' - ').trim()
+      : studentRoute;
+    const destWords = destPart.split(/[,\s]+/).filter(w => w.length > 2);
+
+    let bestFee = null;
+    for (const fee of routeFees) {
+      const feeRoute = (fee.route || '').toLowerCase();
+      const feeTo = (fee.to || feeRoute).toLowerCase();
+      
+      if (feeRoute === studentRoute || feeTo === studentRoute) {
+        bestFee = fee;
+        break;
+      }
+      
+      const matchCount = destWords.filter(w => feeTo.includes(w) || feeRoute.includes(w)).length;
+      if (matchCount > 0 && matchCount >= Math.min(2, destWords.length)) {
+        bestFee = fee;
+        break;
+      }
+    }
+
+    res.json(bestFee || { fee_amount: 0 });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -503,7 +533,9 @@ app.post('/api/student/upload-fees-bill', upload.single('feesBill'), async (req,
     const { regNo } = req.body;
     const fileData = await handleFileUpload(req.file);
     await req.applications.updateOne(
-      { $or: [{ regNo }, { reg_no: regNo }] }, { $set: { feesBillPhoto: fileData, updatedAt: new Date().toISOString() } });
+      { $or: [{ regNo }, { reg_no: regNo }] }, 
+      { $set: { feesBillPhoto: fileData, payment_status: 'paid', updatedAt: new Date().toISOString() } }
+    );
     res.json({ message: 'Bill uploaded', path: fileData });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
