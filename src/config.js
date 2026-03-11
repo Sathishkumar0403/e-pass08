@@ -17,11 +17,11 @@ const BACKEND_BASE = (() => {
 // API configuration
 export const API_BASE_URL = `${BACKEND_BASE}/api`;
 
-// Backup API URLs are ONLY for local development
+// Backup API URLs only if on localhost
 const isLocal = typeof window !== 'undefined' && 
                 (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-export const FALLBACK_API_URLS = []; 
+export const FALLBACK_API_URLS = isLocal ? ['http://localhost:3001/api', 'http://127.0.0.1:3001/api'] : [];
 
 // Image URL helper
 export const getImageUrl = (path) => {
