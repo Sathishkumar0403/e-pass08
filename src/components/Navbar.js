@@ -141,7 +141,6 @@ function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Navigation */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -160,12 +159,14 @@ function Navbar() {
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
             >
               <div className={styles.mobileNavHeader}>
-                <span className={styles.mobileNavTitle}>Navigation</span>
+                <span className={styles.mobileNavTitle}>E-PASS</span>
                 <button className={styles.closeMenuBtn} onClick={closeMobileMenu}>
                   <FaTimes />
                 </button>
               </div>
+              
               <div className={styles.mobileNavContent}>
+                <div className={styles.mobileSectionTitle}>Main Menu</div>
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.path;
@@ -177,13 +178,13 @@ function Navbar() {
                       onClick={closeMobileMenu}
                     >
                       <Icon className={styles.mobileNavIcon} />
-                      <span className={styles.mobileNavLabel}>{item.label}</span>
+                      <span>{item.label}</span>
                     </Link>
                   );
                 })}
 
                 <div className={styles.mobileDropdownSection}>
-                  <div className={styles.mobileSectionTitle}>Users</div>
+                  <div className={styles.mobileSectionTitle}>Portals & Login</div>
                   {portalItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = location.pathname === item.path;
@@ -191,15 +192,26 @@ function Navbar() {
                       <Link
                         key={item.path}
                         to={item.path}
-                        className={`${styles.mobileNavLink} ${isActive ? styles.mobileActiveLink : ''}`}
+                        className={`${styles.mobileNavLink} ${styles.mobilePortalBtn} ${isActive ? styles.mobileActiveLink : ''}`}
                         onClick={closeMobileMenu}
                       >
-                        <Icon className={styles.mobileNavIcon} />
-                        <span className={styles.mobileNavLabel}>{item.label}</span>
+                        <div className={styles.portalIconWrapper}>
+                          <Icon />
+                        </div>
+                        <div className={styles.portalText}>
+                          <span className={styles.portalLabel}>{item.label}</span>
+                          <span className={styles.portalDesc}>
+                            {item.label === 'Student' ? 'Pass Management' : 'Admin & Staff'}
+                          </span>
+                        </div>
                       </Link>
                     );
                   })}
                 </div>
+              </div>
+
+              <div className={styles.mobileNavFooter}>
+                <p>&copy; 2026 E-Bus Pass System</p>
               </div>
             </motion.div>
           </>

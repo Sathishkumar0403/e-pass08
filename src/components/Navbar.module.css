@@ -213,7 +213,7 @@
   inset: 0;
   background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(8px);
-  z-index: 1001; /* Above standard navbar */
+  z-index: 1001;
 }
 
 .mobileNav {
@@ -221,10 +221,10 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 320px;
-  background: white;
+  width: 340px;
+  background: white; /* Force solid white background */
   z-index: 1002;
-  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.15);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -235,13 +235,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-bottom: 2px solid #f8fafc;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .mobileNavTitle {
   font-weight: 800;
   font-size: 1.25rem;
-  color: #0f172a;
+  color: #7c3aed;
+  letter-spacing: 0.1em;
 }
 
 .closeMenuBtn {
@@ -251,23 +253,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f1f5f9;
+  background: white;
   color: #64748b;
   cursor: pointer;
-  border: none;
+  border: 1px solid #e2e8f0;
   font-size: 1.25rem;
-  transition: all 0.2s ease;
-}
-
-.closeMenuBtn:active {
-  transform: scale(0.9);
 }
 
 .mobileNavContent {
   padding: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .mobileNavLink {
@@ -279,42 +278,82 @@
   color: #475569;
   font-weight: 700;
   border-radius: 16px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   background: #f8fafc;
   border: 1px solid rgba(0, 0, 0, 0.02);
-}
-
-.mobileNavLink:active {
-  background: #f1f5f9;
-  transform: scale(0.98);
+  transition: all 0.2s;
 }
 
 .mobileActiveLink {
   background: #f5f3ff;
   color: #7c3aed;
-  border: 1px solid rgba(124, 58, 237, 0.15);
-  box-shadow: 0 10px 20px -5px rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.2);
 }
 
 .mobileNavIcon {
   font-size: 1.4rem;
+  color: #7c3aed;
 }
 
 .mobileDropdownSection {
-  margin-top: 2rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
 .mobileSectionTitle {
-  padding: 0 0.5rem;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.15em;
   color: #94a3b8;
   margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+/* Rich Portal Buttons for Mobile */
+.mobilePortalBtn {
+  background: white;
+  border: 1.5px solid #f1f5f9;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.portalIconWrapper {
+  width: 50px;
+  height: 50px;
+  background: #f5f3ff;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7c3aed;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.portalText {
+  display: flex;
+  flex-direction: column;
+}
+
+.portalLabel {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.portalDesc {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.mobileNavFooter {
+  padding: 2rem;
+  border-top: 1px solid #f1f5f9;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 @media (max-width: 400px) {
