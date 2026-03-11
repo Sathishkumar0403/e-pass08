@@ -540,39 +540,39 @@ app.post('/api/student/request-cancellation', async (req, res) => {
 app.get('/api/student/get-fee/:route', async (req, res) => {
   try {
     const rawRoute = decodeURIComponent(req.params.route).toLowerCase();
-    const routeFees = await req.mongo.collection('route_fees').find({}).toArray();
+    const allFees = await req.mongo.collection('route_fees').find({}).toArray();
     
-    // Normalize: remove everything except letters and numbers
+    // Normalize logic
     const clean = s => s.toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
     const sClean = clean(rawRoute);
-    const sWords = sClean.split(" ");
+    
+    console.log(`[Fee Match] Route: "${rawRoute}" -> Normalized: "${sClean}"`);
 
     let bestFee = null;
-    let maxMatches = 0;
+    let maxScore = 0;
 
-    for (const fee of routeFees) {
-      // Get all words from route name and destination fields
+    for (const fee of allFees) {
       const fWords = [...new Set([
         ...clean(fee.route || "").split(" "),
-        ...clean(fee.to || "").split(" ")
-      ])].filter(w => w.length > 2 && w !== "college" && w !== "university" && w !== "transport" && w !== "india");
+        ...clean(fee.to || "").split(" "),
+        ...clean(fee.from || "").split(" ")
+      ])].filter(w => w.length > 2 && !["india", "tamil", "nadu", "krishnagiri", "district", "college", "university", "transport"].includes(w));
       
       if (fWords.length === 0) continue;
 
-      // Score based on how many keywords of the fee appear in the student route string
-      const matches = fWords.filter(kw => sClean.includes(kw)).length;
-      
-      // Pick the best match
-      if (matches >= 1 && matches > maxMatches) {
-        maxMatches = matches;
+      const matches = fWords.filter(kw => sClean.includes(kw));
+      const score = matches.length;
+
+      if (score > 0 && score > maxScore) {
+        maxScore = score;
         bestFee = fee;
-      } else if (matches >= 1 && matches === maxMatches && bestFee) {
-        // Tie-breaker: prefer the more specific fee (fewer total keywords)
-        const currentFWordsCount = [...new Set([...clean(bestFee.route||"").split(" "), ...clean(bestFee.to||"").split(" ")])].filter(w => w.length > 2).length;
-        if (fWords.length < currentFWordsCount) {
-          bestFee = fee;
-        }
       }
+    }
+    
+    if (bestFee) {
+      console.log(`[Fee Match] SUCCESS! Match: "${bestFee.route || bestFee.to}" Score: ${maxScore}`);
+    } else {
+      console.log(`[Fee Match] FAILED to match "${rawRoute}"`);
     }
 
     res.json(bestFee || { fee_amount: 0 });

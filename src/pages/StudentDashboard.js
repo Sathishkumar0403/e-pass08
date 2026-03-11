@@ -87,7 +87,14 @@ function StudentDashboard() {
       if (studentData.route) {
         try {
           const fee = await getRouteFee(studentData.route);
-          setRouteFee(fee);
+          if (fee && fee.fee_amount > 0) {
+            setRouteFee(fee);
+          } else if (studentData.fee_amount) {
+            // Fallback to student's own record if automatic lookup fails
+            setRouteFee({ fee_amount: studentData.fee_amount });
+          } else {
+            setRouteFee(null);
+          }
         } catch (err) {
           setRouteFee(null);
         }
