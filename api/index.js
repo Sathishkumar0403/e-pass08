@@ -1,20 +1,19 @@
 const path = require('path');
 
-// We use an async function to wrap the Express app
 module.exports = async (req, res) => {
   try {
-    // We use a dynamic import that is shielded from some static analysis
-    const backendPath = path.resolve(__dirname, '../backend/app.js');
-    const { default: app } = await import(backendPath);
+    // eval() prevents the Vercel bundler from seeing the import() and trying to turn it into require()
+    // We use path.resolve to get the absolute path
+    // Using a relative path string literal inside eval is often more reliable on Vercel
+    const { default: app } = await eval('import("../backend/app.js")');
     
-    // Express app is a function (req, res) => { ... }
     return app(req, res);
   } catch (err) {
-    console.error('SERVERLESS BRIDGE ERROR:', err);
+    console.error('VERCEL BRIDGE CRITICAL ERROR:', err);
     res.status(500).json({ 
-      error: 'Failed to load backend', 
-      message: err.message,
-      stack: err.stack 
+      error: 'Serverless Bridge Failure',
+      details: err.message,
+      path: path.resolve(__dirname, '../backend/app.js')
     });
   }
 };
