@@ -36,6 +36,8 @@ async function getDB() {
 app.use(async (req, res, next) => {
   try {
     req.mongo = await getDB();
+    // Use student_applications as the primary collection for both local and prod
+    req.applications = req.mongo.collection('student_applications');
     next();
   } catch (err) {
     console.error('DB connect error:', err.message);
@@ -44,17 +46,15 @@ app.use(async (req, res, next) => {
 });
 
 // Multer - use /tmp for serverless
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = '/tmp/uploads';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/\s/g, '_'))
-});
+const storage = multer.memoryStorage(); // Use memory for serverless to convert to B64
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-app.use('/uploads', express.static('/tmp/uploads'));
+// Helper to handle image uploads to Base64 (persistent on Vercel)
+async function handleFileUpload(file) {
+  if (!file) return null;
+  const b64 = file.buffer.toString('base64');
+  return `data:${file.mimetype};base64,${b64}`;
+}
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
@@ -82,18 +82,20 @@ app.get('/api/admin/applications', async (req, res) => {
   try {
     const { role, department, status } = req.query;
     let query = {};
-    if (status) query.status = status;
-    if (role === 'hod' && department) query.department = department;
-    const apps = await req.mongo.collection('applications').find(query).sort({ created_at: -1 }).toArray();
-    res.json(apps);
+    if (status && status !== 'all') query.status = status;
+    if (role === 'hod' && department) {
+      query.$or = [{ department: department }, { branchYear: new RegExp(`^${department}`, 'i') }];
+    }
+    const apps = await req.applications.find(query).sort({ createdAt: -1, created_at: -1 }).toArray();
+    res.json(apps.map(a => ({ ...a, id: a._id.toString(), regNo: a.regNo || a.reg_no })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/admin/approve', async (req, res) => {
   try {
     const { id } = req.body;
-    await req.mongo.collection('applications').updateOne(
-      { _id: new ObjectId(id) }, { $set: { status: 'approved', updated_at: new Date().toISOString() } });
+    await req.applications.updateOne(
+      { _id: new ObjectId(id) }, { $set: { status: 'approved', updatedAt: new Date().toISOString() } });
     res.json({ message: 'Approved' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -101,31 +103,32 @@ app.post('/api/admin/approve', async (req, res) => {
 app.post('/api/admin/reject', async (req, res) => {
   try {
     const { id, reason } = req.body;
-    await req.mongo.collection('applications').updateOne(
-      { _id: new ObjectId(id) }, { $set: { status: 'rejected', rejection_reason: reason, updated_at: new Date().toISOString() } });
+    await req.applications.updateOne(
+      { _id: new ObjectId(id) }, { $set: { status: 'rejected', rejection_reason: reason, updatedAt: new Date().toISOString() } });
     res.json({ message: 'Rejected' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/admin/applications/:id', async (req, res) => {
   try {
-    await req.mongo.collection('applications').deleteOne({ _id: new ObjectId(req.params.id) });
+    await req.applications.deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ message: 'Deleted' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/admin/applications/:id', async (req, res) => {
   try {
-    const updates = { ...req.body, updated_at: new Date().toISOString() };
+    const updates = { ...req.body, updatedAt: new Date().toISOString() };
     delete updates._id;
-    await req.mongo.collection('applications').updateOne({ _id: new ObjectId(req.params.id) }, { $set: updates });
+    delete updates.id;
+    await req.applications.updateOne({ _id: new ObjectId(req.params.id) }, { $set: updates });
     res.json({ message: 'Updated' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/admin/payment-details', async (req, res) => {
   try {
-    const apps = await req.mongo.collection('applications').find({ payment_status: 'paid' }).toArray();
+    const apps = await req.applications.find({ payment_status: { $in: ['paid', 'verified'] } }).toArray();
     res.json(apps);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -133,8 +136,8 @@ app.get('/api/admin/payment-details', async (req, res) => {
 app.post('/api/admin/approve-payment-pass', async (req, res) => {
   try {
     const { id } = req.body;
-    await req.mongo.collection('applications').updateOne(
-      { _id: new ObjectId(id) }, { $set: { pass_approved: true, status: 'approved', updated_at: new Date().toISOString() } });
+    await req.applications.updateOne(
+      { _id: new ObjectId(id) }, { $set: { pass_approved: true, status: 'approved', updatedAt: new Date().toISOString() } });
     res.json({ message: 'Pass approved' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -142,8 +145,8 @@ app.post('/api/admin/approve-payment-pass', async (req, res) => {
 app.post('/api/admin/reject-payment-pass', async (req, res) => {
   try {
     const { id, reason } = req.body;
-    await req.mongo.collection('applications').updateOne(
-      { _id: new ObjectId(id) }, { $set: { pass_approved: false, status: 'rejected', rejection_reason: reason, updated_at: new Date().toISOString() } });
+    await req.applications.updateOne(
+      { _id: new ObjectId(id) }, { $set: { pass_approved: false, status: 'rejected', rejection_reason: reason, updatedAt: new Date().toISOString() } });
     res.json({ message: 'Pass rejected' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -152,13 +155,15 @@ app.post('/api/admin/reject-payment-pass', async (req, res) => {
 app.get('/api/admin/route-fees', async (req, res) => {
   try {
     const fees = await req.mongo.collection('route_fees').find({}).toArray();
-    res.json(fees);
+    res.json(fees.map(f => ({ ...f, id: f._id.toString() })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/admin/route-fees', async (req, res) => {
   try {
-    const result = await req.mongo.collection('route_fees').insertOne({ ...req.body, created_at: new Date().toISOString() });
+    const data = { ...req.body, created_at: new Date().toISOString() };
+    data.fee_amount = Number(data.fee_amount);
+    const result = await req.mongo.collection('route_fees').insertOne(data);
     res.json({ id: result.insertedId, message: 'Route fee added' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -167,6 +172,8 @@ app.put('/api/admin/route-fees/:id', async (req, res) => {
   try {
     const updates = { ...req.body, updated_at: new Date().toISOString() };
     delete updates._id;
+    delete updates.id;
+    if (updates.fee_amount) updates.fee_amount = Number(updates.fee_amount);
     await req.mongo.collection('route_fees').updateOne({ _id: new ObjectId(req.params.id) }, { $set: updates });
     res.json({ message: 'Updated' });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -183,7 +190,7 @@ app.delete('/api/admin/route-fees/:id', async (req, res) => {
 app.get('/api/admin/bus-routes', async (req, res) => {
   try {
     const routes = await req.mongo.collection('bus_routes').find({}).toArray();
-    res.json(routes);
+    res.json(routes.map(r => ({ ...r, id: r._id.toString() })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -198,6 +205,7 @@ app.put('/api/admin/bus-routes/:id', async (req, res) => {
   try {
     const updates = { ...req.body, updated_at: new Date().toISOString() };
     delete updates._id;
+    delete updates.id;
     await req.mongo.collection('bus_routes').updateOne({ _id: new ObjectId(req.params.id) }, { $set: updates });
     res.json({ message: 'Updated' });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -215,8 +223,7 @@ app.get('/api/admin/bus-seat-counts', async (req, res) => {
     const routes = await req.mongo.collection('bus_routes').find({}).toArray();
     const counts = {};
     for (const r of routes) {
-      // Count by busNumber field in applications (the bus_number field is what students set)
-      const taken = await req.mongo.collection('applications').countDocuments({
+      const taken = await req.applications.countDocuments({
         $or: [{ busNumber: r.bus_number }, { route: r.route }],
         status: 'approved'
       });
@@ -230,9 +237,7 @@ app.get('/api/admin/bus-seat-counts', async (req, res) => {
 app.get('/api/admin/settings', async (req, res) => {
   try {
     const settings = await req.mongo.collection('system_settings').find({}).toArray();
-    // Return as array of {key, value} objects so frontend can iterate with .forEach(s => s.key)
-    const arr = settings.map(s => ({ key: s.key, value: s.value }));
-    res.json(arr);
+    res.json(settings.map(s => ({ key: s.key, value: s.value })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -249,15 +254,15 @@ app.post('/api/admin/update-setting', async (req, res) => {
 app.get('/api/admin/export-excel', async (req, res) => {
   try {
     const ExcelJS = require('exceljs');
-    const apps = await req.mongo.collection('applications').find({}).toArray();
+    const apps = await req.applications.find({}).toArray();
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Applications');
     ws.columns = [
-      { header: 'Reg No', key: 'reg_no' }, { header: 'Name', key: 'name' },
+      { header: 'Reg No', key: 'regNo' }, { header: 'Name', key: 'name' },
       { header: 'Route', key: 'route' }, { header: 'Status', key: 'status' },
-      { header: 'Payment', key: 'payment_status' }, { header: 'Date', key: 'created_at' }
+      { header: 'Payment', key: 'payment_status' }, { header: 'Date', key: 'createdAt' }
     ];
-    apps.forEach(a => ws.addRow(a));
+    apps.forEach(a => ws.addRow({ ...a, regNo: a.regNo || a.reg_no, createdAt: a.createdAt || a.created_at }));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=applications.xlsx');
     await wb.xlsx.write(res);
@@ -268,8 +273,10 @@ app.get('/api/admin/export-excel', async (req, res) => {
 // Cancellation requests
 app.get('/api/admin/cancellation-requests', async (req, res) => {
   try {
-    const reqs = await req.mongo.collection('applications').find({ cancellation_requested: true }).toArray();
-    res.json(reqs);
+    const reqs = await req.applications.find({ 
+      $or: [{ cancellation_requested: true }, { cancellation_requested: 1 }] 
+    }).toArray();
+    res.json(reqs.map(r => ({ ...r, id: r._id.toString() })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -277,9 +284,9 @@ app.post('/api/admin/process-cancellation/:id', async (req, res) => {
   try {
     const { action } = req.body;
     const status = action === 'approve' ? 'cancelled' : 'approved';
-    await req.mongo.collection('applications').updateOne(
+    await req.applications.updateOne(
       { _id: new ObjectId(req.params.id) },
-      { $set: { status, cancellation_requested: false, updated_at: new Date().toISOString() } });
+      { $set: { status, cancellation_requested: false, cancelled: action === 'approve' ? 1 : 0, updatedAt: new Date().toISOString() } });
     res.json({ message: 'Done' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -290,9 +297,13 @@ app.post('/api/admin/process-cancellation/:id', async (req, res) => {
       const { id } = req.body;
       const isApprove = action.includes('approve');
       const stage = action.split('-')[0];
-      const update = { [`${stage}_approved`]: isApprove, updated_at: new Date().toISOString() };
-      if (action === 'admin-approve') update.status = 'cancelled';
-      await req.mongo.collection('applications').updateOne({ _id: new ObjectId(id) }, { $set: update });
+      const update = { [`${stage}_approved`]: isApprove, updatedAt: new Date().toISOString() };
+      if (action === 'admin-approve') {
+        update.status = 'cancelled';
+        update.cancelled = 1;
+        update.cancellation_requested = false;
+      }
+      await req.applications.updateOne({ _id: new ObjectId(id) }, { $set: update });
       res.json({ message: 'Done' });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -307,24 +318,25 @@ app.post('/api/student/apply', upload.fields([
   try {
     const data = { ...req.body };
     if (req.files) {
-      ['photo','aadharPhoto','collegeIdPhoto'].forEach(f => {
-        if (req.files[f]) data[f] = '/uploads/' + req.files[f][0].filename;
-      });
+      if (req.files.photo) data.photo = await handleFileUpload(req.files.photo[0]);
+      if (req.files.aadharPhoto) data.aadharPhoto = await handleFileUpload(req.files.aadharPhoto[0]);
+      if (req.files.collegeIdPhoto) data.collegeIdPhoto = await handleFileUpload(req.files.collegeIdPhoto[0]);
     }
-    // Normalize registration number - store as both regNo and reg_no for compatibility
+    
     const regNum = data.regNo || data.reg_no;
     if (!regNum) return res.status(400).json({ error: 'Registration number is required' });
     data.regNo = regNum;
     data.reg_no = regNum;
-    // Check if already applied (check both field names)
-    const existing = await req.mongo.collection('applications').findOne({
+    
+    const existing = await req.applications.findOne({
       $or: [{ regNo: regNum }, { reg_no: regNum }]
     });
-    if (existing) return res.status(400).json({ error: 'Application already exists for this registration number' });
+    if (existing) return res.status(400).json({ error: 'Application already exists' });
+    
     data.status = 'pending';
     data.payment_status = 'unpaid';
-    data.created_at = new Date().toISOString();
-    const result = await req.mongo.collection('applications').insertOne(data);
+    data.createdAt = new Date().toISOString();
+    const result = await req.applications.insertOne(data);
     res.json({ message: 'Application submitted', id: result.insertedId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -332,8 +344,7 @@ app.post('/api/student/apply', upload.fields([
 app.post('/api/student/login', async (req, res) => {
   try {
     const { regNo, dob } = req.body;
-    // Check both field name formats for compatibility
-    const student = await req.mongo.collection('applications').findOne({
+    const student = await req.applications.findOne({
       $or: [{ regNo, dob }, { reg_no: regNo, dob }]
     });
     if (!student) return res.status(401).json({ error: 'Invalid credentials' });
@@ -344,7 +355,7 @@ app.post('/api/student/login', async (req, res) => {
 app.get('/api/student/status/:regNo', async (req, res) => {
   try {
     const regNo = req.params.regNo;
-    const student = await req.mongo.collection('applications').findOne({
+    const student = await req.applications.findOne({
       $or: [{ regNo }, { reg_no: regNo }]
     });
     if (!student) return res.status(404).json({ error: 'Not found' });
@@ -355,7 +366,7 @@ app.get('/api/student/status/:regNo', async (req, res) => {
 app.get('/api/student/details/:regNo', async (req, res) => {
   try {
     const regNo = req.params.regNo;
-    const student = await req.mongo.collection('applications').findOne({
+    const student = await req.applications.findOne({
       $or: [{ regNo }, { reg_no: regNo }]
     });
     if (!student) return res.status(404).json({ error: 'Not found' });
@@ -366,7 +377,7 @@ app.get('/api/student/details/:regNo', async (req, res) => {
 app.get('/api/student/pass/:regNo', async (req, res) => {
   try {
     const regNo = req.params.regNo;
-    const student = await req.mongo.collection('applications').findOne({
+    const student = await req.applications.findOne({
       $or: [{ regNo, status: 'approved' }, { reg_no: regNo, status: 'approved' }]
     });
     if (!student) return res.status(404).json({ error: 'No approved pass found' });
@@ -377,31 +388,21 @@ app.get('/api/student/pass/:regNo', async (req, res) => {
 app.get('/api/student/payment-status/:regNo', async (req, res) => {
   try {
     const regNo = req.params.regNo;
-    const student = await req.mongo.collection('applications').findOne({
+    const student = await req.applications.findOne({
       $or: [{ regNo }, { reg_no: regNo }]
     });
     if (!student) return res.status(404).json({ error: 'Not found' });
-    res.json({ payment_status: student.payment_status || 'unpaid', amount: student.amount });
+    res.json({ payment_status: student.payment_status || 'unpaid', amount: student.fee_amount || student.amount });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/student/pay', async (req, res) => {
   try {
     const { regNo, paymentId, amount } = req.body;
-    await req.mongo.collection('applications').updateOne(
+    await req.applications.updateOne(
       { $or: [{ regNo }, { reg_no: regNo }] },
-      { $set: { payment_status: 'paid', payment_id: paymentId, amount, paid_at: new Date().toISOString() } });
+      { $set: { payment_status: 'paid', payment_id: paymentId, fee_amount: amount, payment_date: new Date().toISOString() } });
     res.json({ message: 'Payment recorded' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.post('/api/student/create-order', async (req, res) => {
-  try {
-    const Razorpay = require('razorpay');
-    const rz = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET });
-    const { amount, regNo } = req.body;
-    const order = await rz.orders.create({ amount: Math.round(amount * 100), currency: 'INR', receipt: regNo });
-    res.json(order);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -422,9 +423,9 @@ app.post('/api/student/verify-payment', async (req, res) => {
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSig = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
     if (expectedSig !== razorpay_signature) return res.status(400).json({ error: 'Invalid signature' });
-    await req.mongo.collection('applications').updateOne(
+    await req.applications.updateOne(
       { $or: [{ regNo }, { reg_no: regNo }] },
-      { $set: { payment_status: 'paid', payment_id: razorpay_payment_id, order_id: razorpay_order_id, amount, paid_at: new Date().toISOString() } });
+      { $set: { payment_status: 'paid', payment_id: razorpay_payment_id, razorpay_order_id, fee_amount: amount, payment_date: new Date().toISOString() } });
     res.json({ message: 'Payment verified' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -432,50 +433,28 @@ app.post('/api/student/verify-payment', async (req, res) => {
 app.post('/api/student/request-cancellation', async (req, res) => {
   try {
     const { regNo, reason } = req.body;
-    await req.mongo.collection('applications').updateOne(
+    await req.applications.updateOne(
       { $or: [{ regNo }, { reg_no: regNo }] },
-      { $set: { cancellation_requested: true, cancellation_reason: reason, updated_at: new Date().toISOString() } });
+      { $set: { cancellation_requested: 1, cancellation_reason: reason, updatedAt: new Date().toISOString() } });
     res.json({ message: 'Cancellation requested' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/student/cancellation-status/:regNo', async (req, res) => {
-  try {
-    const regNo = req.params.regNo;
-    const student = await req.mongo.collection('applications').findOne({
-      $or: [{ regNo }, { reg_no: regNo }]
-    });
-    if (!student) return res.status(404).json({ error: 'Not found' });
-    res.json({ cancellation_requested: student.cancellation_requested, status: student.status });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/student/verify-pass/:regNo', async (req, res) => {
-  try {
-    const regNo = req.params.regNo;
-    const student = await req.mongo.collection('applications').findOne({
-      $or: [{ regNo }, { reg_no: regNo }]
-    });
-    if (!student) return res.status(404).json({ error: 'Not found' });
-    res.json({ valid: student.status === 'approved', student });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/student/get-fee/:route', async (req, res) => {
   try {
     const route = decodeURIComponent(req.params.route);
-    const fee = await req.mongo.collection('route_fees').findOne({ route });
-    res.json(fee || { fee: 0 });
+    const fee = await req.mongo.collection('route_fees').findOne({ route: { $regex: new RegExp(route, 'i') } });
+    res.json(fee || { fee_amount: 0 });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/student/upload-fees-bill', upload.single('feesBill'), async (req, res) => {
   try {
     const { regNo } = req.body;
-    const filePath = req.file ? '/uploads/' + req.file.filename : null;
-    await req.mongo.collection('applications').updateOne(
-      { $or: [{ regNo }, { reg_no: regNo }] }, { $set: { fees_bill: filePath, updated_at: new Date().toISOString() } });
-    res.json({ message: 'Bill uploaded', path: filePath });
+    const fileData = await handleFileUpload(req.file);
+    await req.applications.updateOne(
+      { $or: [{ regNo }, { reg_no: regNo }] }, { $set: { feesBillPhoto: fileData, updatedAt: new Date().toISOString() } });
+    res.json({ message: 'Bill uploaded', path: fileData });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
