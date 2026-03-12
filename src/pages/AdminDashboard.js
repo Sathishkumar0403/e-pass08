@@ -820,8 +820,17 @@ function AdminDashboard() {
                                       </div>
                                     </div>
 
-                                    {/* Final Action for Admin (Now middle step) */}
-                                    {adminUser?.role === 'admin' && app.hod_approval === 'approved' && app.admin_approval === 'pending' && (
+                                    {/* HOD Action */}
+                                    {adminUser?.role === 'hod' && !app.hod_approval && (
+                                      <div className={styles.btnGroup}>
+                                        <button onClick={() => handleHodApprove(app.id)} className={styles.finalApproveBtn}>
+                                          <FaCheckCircle /> Approve & Forward
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {/* Admin middle step */}
+                                    {adminUser?.role === 'admin' && app.hod_approval === 'approved' && !app.admin_approval && (
                                       <div className={styles.btnGroup}>
                                         <button
                                           onClick={() => handleAdminApprove(app.id)}
@@ -834,6 +843,15 @@ function AdminDashboard() {
                                           className={styles.declineBtn}
                                         >
                                           &times; Decline Request
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {/* Principal Final Step */}
+                                    {adminUser?.role === 'principal' && app.admin_approval === 'approved' && !app.principal_approval && (
+                                      <div className={styles.btnGroup}>
+                                        <button onClick={() => handlePrincipalApprove(app.id)} className={styles.finalApproveBtn}>
+                                          <FaCheckCircle /> Final Approval
                                         </button>
                                       </div>
                                     )}
@@ -1143,7 +1161,7 @@ function AdminDashboard() {
                       <div style={{ marginTop: '1.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem', width: '100%', overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                           <thead>
-                            <tr style={{ textAlign: 'left', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                            <tr style={{ textAlign: 'left', color: '#000000', fontSize: '0.75rem', textTransform: 'uppercase' }}>
                               <th style={{ padding: '0.8rem' }}>Username</th>
                               <th style={{ padding: '0.8rem' }}>Role</th>
                               <th style={{ padding: '0.8rem' }}>Department</th>
@@ -1155,9 +1173,9 @@ function AdminDashboard() {
                               <tr><td colSpan="4" style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>No staff members found.</td></tr>
                             ) : staffUsers.filter(u => u.username !== 'admin').map(user => (
                               <tr key={user._id || user.id} style={{ borderBottom: '1px solid #f8fafc' }}>
-                                <td style={{ padding: '1rem', fontWeight: 600, color: '#0f172a' }}>{user.username}</td>
+                                <td style={{ padding: '1rem', fontWeight: 600, color: '#000000' }}>{user.username}</td>
                                 <td style={{ padding: '1rem' }}><span className={styles.statusPill} style={{ background: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem' }}>{user.role?.toUpperCase()}</span></td>
-                                <td style={{ padding: '1rem', color: '#334155' }}>{user.department || 'All'}</td>
+                                <td style={{ padding: '1rem', color: '#000000' }}>{user.department || 'All'}</td>
                                 <td style={{ padding: '1rem' }}>
                                   <button 
                                     className={styles.addBtn}

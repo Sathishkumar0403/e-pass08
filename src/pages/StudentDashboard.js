@@ -477,11 +477,11 @@ function StudentDashboard() {
 
                   <button
                     onClick={() => setShowTandC(true)}
-                    className={systemSettings.cancellations_enabled === '1' ? styles.dangerBtn : styles.disabledBtn}
-                    disabled={systemSettings.cancellations_enabled !== '1' || cancellationStatus.cancellationRequested || cancellationStatus.isCancelled || studentData.status === 'cancelled'}
+                    className={String(systemSettings.cancellations_enabled) === '1' ? styles.dangerBtn : styles.disabledBtn}
+                    disabled={String(systemSettings.cancellations_enabled) !== '1' || cancellationStatus.cancellationRequested || cancellationStatus.isCancelled || studentData.status === 'cancelled'}
                   >
                     <FaTimesCircle /> 
-                    {systemSettings.cancellations_enabled === '1' 
+                    {String(systemSettings.cancellations_enabled) === '1' 
                       ? (cancellationStatus.isCancelled || studentData.status === 'cancelled' ? 'Pass Cancelled' : (cancellationStatus.cancellationRequested ? 'Cancellation Pending' : 'Cancel My Pass'))
                       : 'Cancellation Period Closed'}
                   </button>

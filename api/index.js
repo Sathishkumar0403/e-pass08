@@ -388,8 +388,12 @@ app.get('/api/admin/bus-seat-counts', async (req, res) => {
     const counts = {};
     for (const r of routes) {
       // Count all applications filled for this bus, excluding rejected/cancelled ones
+      // Checking both busNumber and bus_number for compatibility
       const taken = await req.applications.countDocuments({
-        busNumber: r.bus_number,
+        $or: [
+          { busNumber: r.bus_number },
+          { bus_number: r.bus_number }
+        ],
         status: { $nin: ['rejected', 'cancelled'] }
       });
       counts[r.bus_number] = taken;
@@ -446,14 +450,20 @@ app.get('/api/admin/export-excel', async (req, res) => {
 
 // Cancellation requests
 app.get('/api/admin/cancellation-requests', async (req, res) => {
-  try {
-    const reqs = await req.applications.find({ 
+    const { role, department } = req.query;
+    let query = {
       $or: [
-        { cancellation_requested: true }, 
+        { cancellation_requested: true },
         { cancellation_requested: 1 },
         { cancellation_requested: "1" }
-      ] 
-    }).toArray();
+      ]
+    };
+    if (role === 'hod' && department) {
+      query.$and = [
+        { $or: [{ department: department }, { branchYear: new RegExp(`^${department}`, 'i') }] }
+      ];
+    }
+    const reqs = await req.applications.find(query).toArray();
     res.json(reqs.map(r => ({ ...r, id: r._id.toString() })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -475,8 +485,13 @@ app.post('/api/admin/process-cancellation/:id', async (req, res) => {
       const { id } = req.body;
       const isApprove = action.includes('approve');
       const stage = action.split('-')[0];
-      const update = { [`${stage}_approved`]: isApprove, updatedAt: new Date().toISOString() };
-      if (action === 'admin-approve') {
+      const update = { [`${stage}_approval`]: isApprove ? 'approved' : 'declined', updatedAt: new Date().toISOString() };
+      if (action === 'admin-approve' && isApprove) {
+        // Admin approval is intermediate now, doesn't immediately cancel
+        update.admin_approval = 'approved';
+      }
+      if (action === 'principal-approve' && isApprove) {
+        // Principal is the final step
         update.status = 'cancelled';
         update.cancelled = 1;
         update.cancellation_requested = false;

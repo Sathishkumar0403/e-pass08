@@ -289,16 +289,16 @@ function CancellationDashboard() {
                                                 </td>
                                                 <td>
                                                     <div className={styles.cancellationStatus}>
-                                                        <span>{app.hod_approval === 'pending' ? '⌛ HOD' : '✅ HOD'}</span>
+                                                        <span>{app.hod_approval === 'approved' ? '✅ HOD' : '⌛ HOD'}</span>
                                                         <FaExchangeAlt className={styles.statusIcon} />
-                                                        <span>{app.admin_approval === 'pending' ? '⌛ ADMIN' : '✅ ADMIN'}</span>
+                                                        <span>{app.admin_approval === 'approved' ? '✅ ADMIN' : '⌛ ADMIN'}</span>
                                                         <FaExchangeAlt className={styles.statusIcon} />
-                                                        <span>{app.principal_approval === 'pending' ? '⌛ PRIN' : '✅ PRIN'}</span>
+                                                        <span>{app.principal_approval === 'approved' ? '✅ PRIN' : '⌛ PRIN'}</span>
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div className={styles.actionRow}>
-                                                        {adminUser?.role === 'hod' && app.hod_approval === 'pending' && (
+                                                        {adminUser?.role === 'hod' && !app.hod_approval && (
                                                             <div className={styles.btnGroup}>
                                                                 <button
                                                                     onClick={() => handleHodApprove(app.id)}
@@ -315,7 +315,7 @@ function CancellationDashboard() {
                                                             </div>
                                                         )}
 
-                                                        {adminUser?.role === 'principal' && app.admin_approval === 'approved' && app.principal_approval === 'pending' && (
+                                                        {adminUser?.role === 'principal' && app.admin_approval === 'approved' && !app.principal_approval && (
                                                             <div className={styles.btnGroup}>
                                                                 <button
                                                                     onClick={() => handlePrincipalApprove(app.id)}
@@ -344,7 +344,7 @@ function CancellationDashboard() {
                                                             </div>
                                                         )}
 
-                                                        {adminUser?.role === 'principal' && app.admin_approval === 'pending' && (
+                                                        {adminUser?.role === 'principal' && (!app.admin_approval || app.admin_approval !== 'approved') && (
                                                             <div className={styles.awaitingBadge}>
                                                                 Awaiting Admin
                                                             </div>
