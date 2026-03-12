@@ -384,19 +384,35 @@ app.delete('/api/admin/bus-routes/:id', async (req, res) => {
 
 app.get('/api/admin/bus-seat-counts', async (req, res) => {
   try {
-    const routes = await req.mongo.collection('bus_routes').find({}).toArray();
+    // Use MongoDB aggregation to count applications per bus number.
+    // Handles both 'busNumber' and 'bus_number' fields, trims whitespace,
+    // and covers ALL bus numbers found in applications (not just bus_routes).
+    const pipeline = [
+      { $match: { status: { $nin: ['rejected', 'cancelled'] } } },
+      {
+        $addFields: {
+          _busKey: {
+            $cond: {
+              if: { $and: [{ $ifNull: ['$busNumber', false] }, { $ne: ['$busNumber', ''] }, { $ne: ['$busNumber', null] }] },
+              then: { $trim: { input: { $toString: '$busNumber' } } },
+              else: {
+                $cond: {
+                  if: { $and: [{ $ifNull: ['$bus_number', false] }, { $ne: ['$bus_number', ''] }, { $ne: ['$bus_number', null] }] },
+                  then: { $trim: { input: { $toString: '$bus_number' } } },
+                  else: null
+                }
+              }
+            }
+          }
+        }
+      },
+      { $match: { _busKey: { $ne: null } } },
+      { $group: { _id: '$_busKey', count: { $sum: 1 } } }
+    ];
+    const aggregated = await req.applications.aggregate(pipeline).toArray();
     const counts = {};
-    for (const r of routes) {
-      // Count all applications filled for this bus, excluding rejected/cancelled ones
-      // Checking both busNumber and bus_number for compatibility
-      const taken = await req.applications.countDocuments({
-        $or: [
-          { busNumber: r.bus_number },
-          { bus_number: r.bus_number }
-        ],
-        status: { $nin: ['rejected', 'cancelled'] }
-      });
-      counts[r.bus_number] = taken;
+    for (const item of aggregated) {
+      if (item._id) counts[item._id] = item.count;
     }
     res.json(counts);
   } catch (err) { res.status(500).json({ error: err.message }); }
