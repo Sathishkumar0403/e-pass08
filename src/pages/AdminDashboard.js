@@ -753,15 +753,16 @@ function AdminDashboard() {
                               <div className={styles.flexCol}>
                                 <span className={styles.routeVal}>{app.route}</span>
                                 {app.busNumber ? (() => {
-                                  const bus = busRoutes.find(b => b.bus_number === app.busNumber);
+                                  const appBus = String(app.busNumber).trim();
+                                  const bus = busRoutes.find(b => String(b.bus_number).trim() === appBus);
                                   const capacity = bus ? Number(bus.capacity) || 60 : 60;
-                                  const enrolled = busSeatCounts[app.busNumber] || 0;
+                                  const enrolled = busSeatCounts[appBus] || 0;
                                   const pct = (enrolled / capacity) * 100;
                                   const seatColor = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f97316' : '#22c55e';
                                   
                                   return (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <span className={styles.busVal}>Bus: {app.busNumber}</span>
+                                      <span className={styles.busVal}>Bus: {appBus}</span>
                                       <span style={{
                                         fontSize: '0.65rem',
                                         padding: '2px 6px',
@@ -885,8 +886,9 @@ function AdminDashboard() {
 
                 <div className={styles.gridContainer}>
                   {busRoutes.map(bus => {
+                    const busNum = String(bus.bus_number).trim();
                     const CAPACITY = bus.capacity ? Number(bus.capacity) : 60;
-                    const enrolled = busSeatCounts[bus.bus_number] || 0;
+                    const enrolled = busSeatCounts[busNum] || 0;
                     const remaining = Math.max(0, CAPACITY - enrolled);
                     const pct = (enrolled / CAPACITY) * 100;
                     const seatStatus = remaining === 0 ? 'full' : pct >= 80 ? 'nearFull' : 'available';
