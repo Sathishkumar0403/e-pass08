@@ -397,3 +397,14 @@ export async function resetPassword(username, oldPassword, newPassword) {
     body: JSON.stringify({ username, oldPassword, newPassword }),
   });
 }
+
+export async function getStaffUsers() {
+  return apiCall(`/admin/staff-users`);
+}
+
+export async function forceResetPassword(targetUsername, newPassword, adminToken) {
+  return apiCall(`/admin/force-reset-password`, {
+    method: "POST",
+    body: JSON.stringify({ targetUsername, newPassword, adminToken }),
+  });
+}

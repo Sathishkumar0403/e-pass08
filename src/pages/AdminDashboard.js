@@ -55,7 +55,9 @@ import {
   updateApplication,
   getAdminSettings,
   updateSystemSetting,
-  resetPassword
+  resetPassword,
+  getStaffUsers,
+  forceResetPassword
 } from '../utils/api';
 import { getImageUrl } from '../config';
 import styles from './AdminDashboard.module.css';
@@ -113,6 +115,10 @@ function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [staffUsers, setStaffUsers] = useState([]);
+  const [showStaffResetModal, setShowStaffResetModal] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [staffResetForm, setStaffResetForm] = useState({ newPassword: '', confirmPassword: '' });
   const navigate = useNavigate();
 
   const refreshData = useCallback(async (type = 'all') => {
@@ -144,6 +150,11 @@ function AdminDashboard() {
         const busData = await getBusRoutes();
         setBusRoutes(busData);
         getBusSeatCounts().then(setBusSeatCounts).catch(() => {});
+      }
+
+      if (type === 'all' || type === 'staff') {
+        const staff = await getStaffUsers();
+        setStaffUsers(staff);
       }
 
       if (type === 'all' || type === 'notifications') {
@@ -501,6 +512,28 @@ function AdminDashboard() {
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       setError(err.message || 'Failed to update password');
+    }
+  };
+
+  const handleForceResetStaffPassword = async () => {
+    if (!staffResetForm.newPassword || !staffResetForm.confirmPassword) {
+      setError('Please fill all password fields');
+      return;
+    }
+    if (staffResetForm.newPassword !== staffResetForm.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    const adminToken = localStorage.getItem('adminToken');
+    try {
+      await forceResetPassword(selectedStaff.username, staffResetForm.newPassword, adminToken);
+      setSuccessMessage(`Password updated for ${selectedStaff.username}`);
+      setShowStaffResetModal(false);
+      setStaffResetForm({ newPassword: '', confirmPassword: '' });
+      setSelectedStaff(null);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Force reset failed');
     }
   };
 
@@ -1066,6 +1099,46 @@ function AdminDashboard() {
                       </button>
                     </div>
                   </div>
+
+                  <div className={styles.settingCard} style={{ gridColumn: '1 / -1', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <div className={styles.settingInfo} style={{ width: '100%' }}>
+                      <h3>Manage Staff Credentials</h3>
+                      <p>View and reset passwords for HODs and Principals.</p>
+                      
+                      <div style={{ marginTop: '1.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem', width: '100%' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ textAlign: 'left', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                              <th style={{ padding: '0.8rem' }}>Username</th>
+                              <th style={{ padding: '0.8rem' }}>Role</th>
+                              <th style={{ padding: '0.8rem' }}>Department</th>
+                              <th style={{ padding: '0.8rem' }}>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {staffUsers.filter(u => u.username !== 'admin').length === 0 ? (
+                              <tr><td colSpan="4" style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>No staff members found.</td></tr>
+                            ) : staffUsers.filter(u => u.username !== 'admin').map(user => (
+                              <tr key={user._id || user.id} style={{ borderBottom: '1px solid #f8fafc' }}>
+                                <td style={{ padding: '1rem', fontWeight: 600 }}>{user.username}</td>
+                                <td style={{ padding: '1rem' }}><span className={styles.statusPill} style={{ background: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem' }}>{user.role?.toUpperCase()}</span></td>
+                                <td style={{ padding: '1rem' }}>{user.department || 'All'}</td>
+                                <td style={{ padding: '1rem' }}>
+                                  <button 
+                                    className={styles.addBtn}
+                                    style={{ margin: 0, padding: '6px 14px', fontSize: '0.8rem', background: '#f59e0b' }}
+                                    onClick={() => { setSelectedStaff(user); setShowStaffResetModal(true); }}
+                                  >
+                                    Reset Password
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -1405,6 +1478,43 @@ function AdminDashboard() {
               </div>
               <div className={styles.modalFooter}>
                 <button onClick={handleResetPassword} className={styles.saveBtn}>Update Password</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showStaffResetModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowStaffResetModal(false)}>
+            <motion.div className={styles.modalPanel} onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+              <div className={styles.modalHeader}>
+                <h3>Force Reset: {selectedStaff?.username}</h3>
+                <button onClick={() => setShowStaffResetModal(false)} className={styles.closeModalBtn}><FaTimes /></button>
+              </div>
+              <div className={styles.modalBody}>
+                <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem', fontWeight: 600 }}>
+                  WARNING: This will instantly change the password for this user.
+                </p>
+                <div className={styles.inputGroup}>
+                  <label>New Password</label>
+                  <input 
+                    type="password" 
+                    value={staffResetForm.newPassword} 
+                    onChange={e => setStaffResetForm({ ...staffResetForm, newPassword: e.target.value })} 
+                    placeholder="Enter new password" 
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Confirm New Password</label>
+                  <input 
+                    type="password" 
+                    value={staffResetForm.confirmPassword} 
+                    onChange={e => setStaffResetForm({ ...staffResetForm, confirmPassword: e.target.value })} 
+                    placeholder="Repeat new password" 
+                  />
+                </div>
+              </div>
+              <div className={styles.modalFooter}>
+                <button onClick={handleForceResetStaffPassword} className={styles.saveBtn} style={{ background: '#f59e0b' }}>Update Staff Password</button>
               </div>
             </motion.div>
           </div>

@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaUserShield, FaUser, FaLock, FaSignInAlt, FaEye, FaEyeSlash, FaExclamationCircle } from 'react-icons/fa';
-import { adminLogin } from '../utils/api';
+import { FaUserShield, FaUser, FaLock, FaSignInAlt, FaEye, FaEyeSlash, FaExclamationCircle, FaTimes, FaShieldAlt, FaCheckCircle } from 'react-icons/fa';
+import { adminLogin, resetPassword } from '../utils/api';
 import styles from './AdminLogin.module.css';
+import commonStyles from './AdminDashboard.module.css'; // borrowing some modal styles
 
 function OfficialLogin() {
   const [login, setLogin] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetForm, setResetForm] = useState({ username: '', oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -59,6 +63,30 @@ function OfficialLogin() {
       }
     } catch (err) {
       setError(err?.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!resetForm.username || !resetForm.oldPassword || !resetForm.newPassword || !resetForm.confirmPassword) {
+      setError('Please fill all fields');
+      return;
+    }
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    setLoading(true);
+    try {
+      await resetPassword(resetForm.username, resetForm.oldPassword, resetForm.newPassword);
+      setSuccessMessage('Password reset successful! You can now login.');
+      setShowResetModal(false);
+      setResetForm({ username: '', oldPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } catch (err) {
+      setError(err.message || 'Reset failed. Check your old password.');
     } finally {
       setLoading(false);
     }
@@ -159,8 +187,90 @@ function OfficialLogin() {
                 </>
               )}
             </motion.button>
+            <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+              <button 
+                type="button" 
+                onClick={() => setShowResetModal(true)}
+                style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Forgot Password or Security Reset?
+              </button>
+            </div>
           </form>
+
+          {successMessage && (
+            <div style={{ marginTop: '1rem', padding: '1rem', background: '#dcfce7', color: '#166534', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+              <FaCheckCircle /> {successMessage}
+            </div>
+          )}
         </motion.div>
+
+        {/* Reset Modal */}
+        <AnimatePresence>
+          {showResetModal && (
+            <div className={commonStyles.modalOverlay} onClick={() => setShowResetModal(false)}>
+              <motion.div 
+                className={commonStyles.modalPanel} 
+                onClick={e => e.stopPropagation()}
+                initial={{ opacity: 0, scale: 0.9 }} 
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+              >
+                <div className={commonStyles.modalHeader}>
+                  <h3>Official Security Reset</h3>
+                  <button onClick={() => setShowResetModal(false)} className={commonStyles.closeModalBtn}><FaTimes /></button>
+                </div>
+                <div className={commonStyles.modalBody}>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
+                    Verify your identity using your current password and username to update your security credentials.
+                    <br/><strong>Forgot your old password?</strong> Please contact the System Administrator.
+                  </p>
+                  <div className={commonStyles.inputGroup}>
+                    <label>Username / Official ID</label>
+                    <input 
+                      type="text" 
+                      value={resetForm.username} 
+                      onChange={e => setResetForm({ ...resetForm, username: e.target.value })} 
+                      placeholder="Enter your username" 
+                    />
+                  </div>
+                  <div className={commonStyles.inputGroup}>
+                    <label>Current Password</label>
+                    <input 
+                      type="password" 
+                      value={resetForm.oldPassword} 
+                      onChange={e => setResetForm({ ...resetForm, oldPassword: e.target.value })} 
+                      placeholder="Enter current password" 
+                    />
+                  </div>
+                  <div className={commonStyles.inputGroup}>
+                    <label>New Password</label>
+                    <input 
+                      type="password" 
+                      value={resetForm.newPassword} 
+                      onChange={e => setResetForm({ ...resetForm, newPassword: e.target.value })} 
+                      placeholder="At least 6 characters" 
+                    />
+                  </div>
+                  <div className={commonStyles.inputGroup}>
+                    <label>Confirm New Password</label>
+                    <input 
+                      type="password" 
+                      value={resetForm.confirmPassword} 
+                      onChange={e => setResetForm({ ...resetForm, confirmPassword: e.target.value })} 
+                      placeholder="Repeat new password" 
+                    />
+                  </div>
+                </div>
+                <div className={commonStyles.modalFooter}>
+                  <button onClick={handleResetPassword} className={commonStyles.saveBtn} disabled={loading}>
+                    {loading ? 'Processing...' : 'Update Password'}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

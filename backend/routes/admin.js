@@ -577,4 +577,52 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// 5. Admin: Force Reset Staff Password
+router.post('/force-reset-password', async (req, res) => {
+  try {
+    const { targetUsername, newPassword, adminToken } = req.body;
+    
+    // Simple verification (in a real app, use proper JWT/Sessions)
+    if (adminToken !== 'admin-hardcoded-token') {
+      return res.status(403).json({ error: 'Unauthorized. Only Admin can perform this.' });
+    }
+
+    if (!targetUsername || !newPassword) {
+      return res.status(400).json({ error: 'Username and new password are required' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    const result = await req.mongo.collection("admin_users").updateOne(
+      { username: targetUsername },
+      { 
+        $set: { 
+          password: hashedPassword,
+          password_updated_at: new Date().toISOString()
+        } 
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Staff user not found' });
+    }
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Force reset error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 6. Admin: List all staff users
+router.get('/staff-users', async (req, res) => {
+  try {
+    const users = await req.mongo.collection("admin_users").find({}, { projection: { password: 0 } }).toArray();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
 module.exports = router;
