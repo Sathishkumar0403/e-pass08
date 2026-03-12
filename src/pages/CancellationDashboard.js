@@ -11,7 +11,10 @@ import {
     FaInfoCircle,
     FaUser,
     FaExchangeAlt,
-    FaClipboardList
+    FaClipboardList,
+    FaBars,
+    FaTimes,
+    FaShieldAlt
 } from 'react-icons/fa';
 import {
 
@@ -19,7 +22,8 @@ import {
     hodDeclineCancellation,
     principalApproveCancellation,
     principalDeclineCancellation,
-    getApplications
+    getApplications,
+    resetPassword
 } from '../utils/api';
 import { getImageUrl } from '../config';
 import styles from './CancellationDashboard.module.css';
@@ -34,6 +38,9 @@ function CancellationDashboard() {
     const [loading, setLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [adminUser, setAdminUser] = useState(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
     const navigate = useNavigate();
 
     const fetchRequests = React.useCallback(async () => {
@@ -131,6 +138,30 @@ function CancellationDashboard() {
         }
     };
 
+    const handleResetPassword = async () => {
+        if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+            setError('Please fill all password fields');
+            return;
+        }
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            setError('New passwords do not match');
+            return;
+        }
+        if (passwordForm.newPassword.length < 6) {
+            setError('Password must be at least 6 characters');
+            return;
+        }
+        try {
+            await resetPassword(adminUser.username, passwordForm.oldPassword, passwordForm.newPassword);
+            setSuccessMessage('Password updated successfully');
+            setShowPasswordModal(false);
+            setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (err) {
+            setError(err.message || 'Failed to update password');
+        }
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminUser');
@@ -144,15 +175,38 @@ function CancellationDashboard() {
 
     return (
         <div className={styles.dashboardContainer}>
-            <aside className={styles.sidebar}>
+            {/* Mobile hamburger toggle */}
+            <button
+                className={styles.menuToggle}
+                onClick={() => setSidebarOpen(prev => !prev)}
+                aria-label="Toggle navigation"
+            >
+                {sidebarOpen ? <FaTimes /> : <FaBars />}
+            </button>
+
+            {/* Dark overlay behind sidebar on mobile */}
+            <div
+                className={`${styles.sidebarOverlay} ${sidebarOpen ? styles.active : ''}`}
+                onClick={() => setSidebarOpen(false)}
+            />
+
+            <aside className={`${styles.sidebar} ${sidebarOpen ? styles.open : ''}`}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.logoBox}>CP</div>
                     <span className={styles.logoLabel}>CANCELLATION PORTAL</span>
                 </div>
-
                 <div className={styles.navMenu}>
-                    <button className={`${styles.navItem} ${styles.navActive}`}>
+                    <button 
+                        className={`${styles.navItem} ${styles.navActive}`}
+                        onClick={() => setSidebarOpen(false)}
+                    >
                         <FaClipboardList /> Requests
+                    </button>
+                    <button 
+                        className={styles.navItem}
+                        onClick={() => { setShowPasswordModal(true); setSidebarOpen(false); }}
+                    >
+                        <FaShieldAlt /> Security settings
                     </button>
                 </div>
 
@@ -306,6 +360,59 @@ function CancellationDashboard() {
                     </motion.div>
                 </section>
             </main>
+
+            {/* Password Reset Modal */}
+            {showPasswordModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowPasswordModal(false)}>
+                    <motion.div 
+                        className={styles.modalPanel} 
+                        onClick={e => e.stopPropagation()}
+                        initial={{ opacity: 0, scale: 0.9 }} 
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                    >
+                        <div className={styles.modalHeader}>
+                            <h3>Change Password</h3>
+                            <button onClick={() => setShowPasswordModal(false)} className={styles.closeModalBtn}><FaTimes /></button>
+                        </div>
+                        <div className={styles.modalBody}>
+                            <div className={styles.inputGroup}>
+                                <label>Current Password</label>
+                                <input 
+                                    type="password" 
+                                    className={styles.formInput}
+                                    value={passwordForm.oldPassword} 
+                                    onChange={e => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })} 
+                                    placeholder="Enter current password" 
+                                />
+                            </div>
+                            <div className={styles.inputGroup}>
+                                <label>New Password</label>
+                                <input 
+                                    type="password" 
+                                    className={styles.formInput}
+                                    value={passwordForm.newPassword} 
+                                    onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} 
+                                    placeholder="At least 6 characters" 
+                                />
+                            </div>
+                            <div className={styles.inputGroup}>
+                                <label>Confirm New Password</label>
+                                <input 
+                                    type="password" 
+                                    className={styles.formInput}
+                                    value={passwordForm.confirmPassword} 
+                                    onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} 
+                                    placeholder="Repeat new password" 
+                                />
+                            </div>
+                        </div>
+                        <div className={styles.modalFooter}>
+                            <button onClick={handleResetPassword} className={styles.saveBtn}>Update Password</button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 }

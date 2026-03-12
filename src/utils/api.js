@@ -389,3 +389,11 @@ export async function updateSystemSetting(key, value) {
     body: JSON.stringify({ key, value }),
   });
 }
+
+// Password Management
+export async function resetPassword(username, oldPassword, newPassword) {
+  return apiCall(`/admin/reset-password`, {
+    method: "POST",
+    body: JSON.stringify({ username, oldPassword, newPassword }),
+  });
+}

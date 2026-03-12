@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
 const { ObjectId } = require('mongodb');
+const bcrypt = require('bcryptjs');
+
 
 const router = express.Router();
 
@@ -25,20 +27,43 @@ router.post('/login', async (req, res) => {
     }
 
     // 2. Check Database
-    const user = await req.mongo.collection("admin_users").findOne({ username, password });
+    const user = await req.mongo.collection("admin_users").findOne({ username });
 
     if (user) {
-      res.json({
-        message: 'Login successful',
-        token: 'staff-db-token',
-        user: {
-          id: user._id.toString(),
-          username: user.username,
-          role: user.role,
-          department: user.department,
-          name: user.name
+      // Check if password matches (handling both hashed and plain text for transition)
+      let isMatch = false;
+      const isHashed = user.password && user.password.startsWith('$2');
+      
+      if (isHashed) {
+        isMatch = await bcrypt.compare(password, user.password);
+      } else {
+        isMatch = (password === user.password);
+        // If it's a plain text match, we should hash it now for future safety
+        if (isMatch) {
+          const salt = await bcrypt.genSalt(10);
+          const hashedPassword = await bcrypt.hash(password, salt);
+          await req.mongo.collection("admin_users").updateOne(
+            { _id: user._id },
+            { $set: { password: hashedPassword } }
+          );
         }
-      });
+      }
+
+      if (isMatch) {
+        res.json({
+          message: 'Login successful',
+          token: 'staff-db-token',
+          user: {
+            id: user._id.toString(),
+            username: user.username,
+            role: user.role,
+            department: user.department,
+            name: user.name
+          }
+        });
+      } else {
+        res.status(401).json({ error: 'Invalid credentials' });
+      }
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -493,6 +518,62 @@ router.post('/update-setting', async (req, res) => {
     res.json({ message: 'Updated' });
   } catch (err) {
     res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// =============================
+// Password Management
+// =============================
+
+// Reset password route for Admin/HOD/Principal
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { username, oldPassword, newPassword } = req.body;
+    
+    if (!username || !oldPassword || !newPassword) {
+      return res.status(400).json({ error: 'Username, old password, and new password are required' });
+    }
+
+    // 1. Find user (can be admin, hod, or principal)
+    const user = await req.mongo.collection("admin_users").findOne({ username });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // 2. Verify old password
+    let isMatch = false;
+    const isHashed = user.password && user.password.startsWith('$2');
+    
+    if (isHashed) {
+      isMatch = await bcrypt.compare(oldPassword, user.password);
+    } else {
+      isMatch = (oldPassword === user.password);
+    }
+
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid old password' });
+    }
+
+    // 3. Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // 4. Update password in database
+    await req.mongo.collection("admin_users").updateOne(
+      { username: username },
+      { 
+        $set: { 
+          password: hashedPassword,
+          password_updated_at: new Date().toISOString()
+        } 
+      }
+    );
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

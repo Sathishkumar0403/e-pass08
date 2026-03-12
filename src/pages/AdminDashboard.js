@@ -54,7 +54,8 @@ import {
   rejectPaymentPass,
   updateApplication,
   getAdminSettings,
-  updateSystemSetting
+  updateSystemSetting,
+  resetPassword
 } from '../utils/api';
 import { getImageUrl } from '../config';
 import styles from './AdminDashboard.module.css';
@@ -110,6 +111,8 @@ function AdminDashboard() {
   const [editForm, setEditForm] = useState({});
   const [systemSettings, setSystemSettings] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const navigate = useNavigate();
 
   const refreshData = useCallback(async (type = 'all') => {
@@ -477,6 +480,30 @@ function AdminDashboard() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setError('Please fill all password fields');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    try {
+      await resetPassword(adminUser.username, passwordForm.oldPassword, passwordForm.newPassword);
+      setSuccessMessage('Password updated successfully');
+      setShowPasswordModal(false);
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to update password');
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
@@ -574,6 +601,33 @@ function AdminDashboard() {
             {activeTab === 'applications' && (
               <motion.div key="apps" variants={containerVariants} initial="hidden" animate="visible" exit="hidden">
                 <div className={styles.toolBar}>
+                  <div style={{ width: '100%', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
+                      {busRoutes.map(bus => {
+                        const enrolled = busSeatCounts[bus.bus_number] || 0;
+                        const capacity = bus.capacity || 60;
+                        const isFull = enrolled >= capacity;
+                        return (
+                          <div key={bus.id} style={{
+                            padding: '8px 16px',
+                            background: isFull ? '#fff1f2' : '#f0fdf4',
+                            border: `1px solid ${isFull ? '#fecaca' : '#bbf7d0'}`,
+                            borderRadius: '12px',
+                            fontSize: '0.8rem',
+                            fontWeight: '700',
+                            whiteSpace: 'nowrap',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <FaBus style={{ color: isFull ? '#dc2626' : '#16a34a' }} />
+                            <span>Bus {bus.bus_number}:</span>
+                            <span style={{ color: isFull ? '#dc2626' : '#16a34a' }}>{enrolled}/{capacity} filled</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div className={styles.searchBox}>
                     <FaSearch />
                     <input type="text" placeholder="Search students..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -996,6 +1050,22 @@ function AdminDashboard() {
                       </span>
                     </div>
                   </div>
+
+                  <div className={styles.settingCard}>
+                    <div className={styles.settingInfo}>
+                      <h3>Security & Privacy</h3>
+                      <p>Update your account password to keep your dashboard secure.</p>
+                    </div>
+                    <div className={styles.settingAction}>
+                      <button 
+                        className={styles.addBtn} 
+                        style={{ margin: 0, padding: '8px 16px', background: '#4f46e5' }}
+                        onClick={() => setShowPasswordModal(true)}
+                      >
+                        <FaShieldAlt /> Reset Password
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -1292,6 +1362,49 @@ function AdminDashboard() {
               </div>
               <div className={styles.modalFooter}>
                 <button onClick={handleSaveApplication} className={styles.saveBtn}>Update Application</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showPasswordModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowPasswordModal(false)}>
+            <motion.div className={styles.modalPanel} onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+              <div className={styles.modalHeader}>
+                <h3>Reset Admin Password</h3>
+                <button onClick={() => setShowPasswordModal(false)} className={styles.closeModalBtn}><FaTimes /></button>
+              </div>
+              <div className={styles.modalBody}>
+                <div className={styles.inputGroup}>
+                  <label>Current Password</label>
+                  <input 
+                    type="password" 
+                    value={passwordForm.oldPassword} 
+                    onChange={e => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })} 
+                    placeholder="Enter current password" 
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>New Password</label>
+                  <input 
+                    type="password" 
+                    value={passwordForm.newPassword} 
+                    onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} 
+                    placeholder="At least 6 characters" 
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Confirm New Password</label>
+                  <input 
+                    type="password" 
+                    value={passwordForm.confirmPassword} 
+                    onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} 
+                    placeholder="Repeat new password" 
+                  />
+                </div>
+              </div>
+              <div className={styles.modalFooter}>
+                <button onClick={handleResetPassword} className={styles.saveBtn}>Update Password</button>
               </div>
             </motion.div>
           </div>

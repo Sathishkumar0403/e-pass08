@@ -303,7 +303,9 @@ app.get('/api/admin/settings', async (req, res) => {
 app.get('/api/student/system-settings', async (req, res) => {
   try {
     const settings = await req.mongo.collection('system_settings').find({}).toArray();
-    res.json(settings.map(s => ({ key: s.key, value: s.value })));
+    const obj = {};
+    settings.forEach(s => { obj[s.key] = s.value; });
+    res.json(obj);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -340,7 +342,11 @@ app.get('/api/admin/export-excel', async (req, res) => {
 app.get('/api/admin/cancellation-requests', async (req, res) => {
   try {
     const reqs = await req.applications.find({ 
-      $or: [{ cancellation_requested: true }, { cancellation_requested: 1 }] 
+      $or: [
+        { cancellation_requested: true }, 
+        { cancellation_requested: 1 },
+        { cancellation_requested: "1" }
+      ] 
     }).toArray();
     res.json(reqs.map(r => ({ ...r, id: r._id.toString() })));
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -637,13 +643,9 @@ app.post('/api/student/upload-fees-bill', upload.single('feesBill'), async (req,
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/student/system-settings', async (req, res) => {
-  try {
-    const settings = await req.mongo.collection('system_settings').find({}).toArray();
-    const obj = {};
-    settings.forEach(s => { obj[s.key] = s.value; });
-    res.json(obj);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+// Health endpoint aliased for student settings check
+app.get('/api/student/settings-check', async (req, res) => {
+  res.json({ status: 'active', timestamp: new Date().toISOString() });
 });
 
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
