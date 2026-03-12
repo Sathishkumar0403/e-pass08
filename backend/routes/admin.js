@@ -583,7 +583,7 @@ router.post('/force-reset-password', async (req, res) => {
     const { targetUsername, newPassword, adminToken } = req.body;
     
     // Simple verification (in a real app, use proper JWT/Sessions)
-    if (adminToken !== 'admin-hardcoded-token') {
+    if (adminToken !== 'admin-token') {
       return res.status(403).json({ error: 'Unauthorized. Only Admin can perform this.' });
     }
 
@@ -622,6 +622,40 @@ router.get('/staff-users', async (req, res) => {
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// 7. Admin: Add new staff member
+router.post('/add-staff', async (req, res) => {
+  try {
+    const { username, password, role, department, adminToken } = req.body;
+    
+    if (adminToken !== 'admin-token') {
+      return res.status(403).json({ error: 'Unauthorized. Only Admin can perform this.' });
+    }
+
+    if (!username || !password || !role) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const existing = await req.mongo.collection("admin_users").findOne({ username });
+    if (existing) return res.status(400).json({ error: 'Username already exists' });
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    await req.mongo.collection("admin_users").insertOne({
+      username,
+      password: hashedPassword,
+      role,
+      department: role === 'hod' ? department : null,
+      name: `${role.toUpperCase()} ${department || ''}`,
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({ message: 'Staff member added successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add staff member' });
   }
 });
 

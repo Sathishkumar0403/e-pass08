@@ -159,6 +159,31 @@ app.get('/api/admin/staff-users', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin: Add new staff member
+app.post('/api/admin/add-staff', async (req, res) => {
+  try {
+    const { username, password, role, department, adminToken } = req.body;
+    if (adminToken !== 'admin-token') return res.status(403).json({ error: 'Unauthorized' });
+
+    const existing = await req.mongo.collection("admin_users").findOne({ username });
+    if (existing) return res.status(400).json({ error: 'Username already exists' });
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    await req.mongo.collection("admin_users").insertOne({
+      username,
+      password: hashedPassword,
+      role,
+      department: role === 'hod' ? department : null,
+      name: `${role.toUpperCase()} ${department || ''}`,
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({ message: 'Staff member added successfully' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/admin/applications', async (req, res) => {
   try {
     const { role, department, status } = req.query;

@@ -57,7 +57,8 @@ import {
   updateSystemSetting,
   resetPassword,
   getStaffUsers,
-  forceResetPassword
+  forceResetPassword,
+  addStaff
 } from '../utils/api';
 import { getImageUrl } from '../config';
 import styles from './AdminDashboard.module.css';
@@ -119,6 +120,8 @@ function AdminDashboard() {
   const [showStaffResetModal, setShowStaffResetModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [staffResetForm, setStaffResetForm] = useState({ newPassword: '', confirmPassword: '' });
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [addStaffForm, setAddStaffForm] = useState({ username: '', password: '', role: 'hod', department: '' });
   const navigate = useNavigate();
 
   const refreshData = useCallback(async (type = 'all') => {
@@ -534,6 +537,27 @@ function AdminDashboard() {
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       setError(err.message || 'Force reset failed');
+    }
+  };
+
+  const handleCreateStaff = async () => {
+    if (!addStaffForm.username || !addStaffForm.password || !addStaffForm.role) {
+      setError('Please fill all required fields');
+      return;
+    }
+    if (addStaffForm.role === 'hod' && !addStaffForm.department) {
+      setError('Department is required for HOD role');
+      return;
+    }
+    try {
+      await addStaff(addStaffForm);
+      setSuccessMessage(`New ${addStaffForm.role.toUpperCase()} added: ${addStaffForm.username}`);
+      setShowAddStaffModal(false);
+      setAddStaffForm({ username: '', password: '', role: 'hod', department: '' });
+      refreshData('staff');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to add staff member');
     }
   };
 
@@ -1102,10 +1126,21 @@ function AdminDashboard() {
 
                   <div className={styles.settingCard} style={{ gridColumn: '1 / -1', flexDirection: 'column', alignItems: 'flex-start' }}>
                     <div className={styles.settingInfo} style={{ width: '100%' }}>
-                      <h3>Manage Staff Credentials</h3>
-                      <p>View and reset passwords for HODs and Principals.</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div>
+                          <h3 style={{ color: '#1e293b' }}>Manage Staff Credentials</h3>
+                          <p style={{ color: '#64748b' }}>View and reset passwords for HODs and Principals.</p>
+                        </div>
+                        <button 
+                          className={styles.addBtn}
+                          onClick={() => setShowAddStaffModal(true)}
+                          style={{ margin: 0, padding: '8px 16px' }}
+                        >
+                          <FaPlus /> Add Staff Account
+                        </button>
+                      </div>
                       
-                      <div style={{ marginTop: '1.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem', width: '100%' }}>
+                      <div style={{ marginTop: '1.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem', width: '100%', overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                           <thead>
                             <tr style={{ textAlign: 'left', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>
@@ -1120,9 +1155,9 @@ function AdminDashboard() {
                               <tr><td colSpan="4" style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>No staff members found.</td></tr>
                             ) : staffUsers.filter(u => u.username !== 'admin').map(user => (
                               <tr key={user._id || user.id} style={{ borderBottom: '1px solid #f8fafc' }}>
-                                <td style={{ padding: '1rem', fontWeight: 600 }}>{user.username}</td>
+                                <td style={{ padding: '1rem', fontWeight: 600, color: '#0f172a' }}>{user.username}</td>
                                 <td style={{ padding: '1rem' }}><span className={styles.statusPill} style={{ background: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem' }}>{user.role?.toUpperCase()}</span></td>
-                                <td style={{ padding: '1rem' }}>{user.department || 'All'}</td>
+                                <td style={{ padding: '1rem', color: '#334155' }}>{user.department || 'All'}</td>
                                 <td style={{ padding: '1rem' }}>
                                   <button 
                                     className={styles.addBtn}
@@ -1515,6 +1550,64 @@ function AdminDashboard() {
               </div>
               <div className={styles.modalFooter}>
                 <button onClick={handleForceResetStaffPassword} className={styles.saveBtn} style={{ background: '#f59e0b' }}>Update Staff Password</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showAddStaffModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowAddStaffModal(false)}>
+            <motion.div className={styles.modalPanel} onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+              <div className={styles.modalHeader}>
+                <h3>Register New Staff Member</h3>
+                <button onClick={() => setShowAddStaffModal(false)} className={styles.closeModalBtn}><FaTimes /></button>
+              </div>
+              <div className={styles.modalBody}>
+                <div className={styles.inputGroup}>
+                  <label>Username (Login ID)</label>
+                  <input 
+                    type="text" 
+                    value={addStaffForm.username} 
+                    onChange={e => setAddStaffForm({ ...addStaffForm, username: e.target.value })} 
+                    placeholder="e.g. csehod2026" 
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Initial Password</label>
+                  <input 
+                    type="password" 
+                    value={addStaffForm.password} 
+                    onChange={e => setAddStaffForm({ ...addStaffForm, password: e.target.value })} 
+                    placeholder="Enter password" 
+                  />
+                </div>
+                <div className={styles.formGrid}>
+                  <div className={styles.inputGroup}>
+                    <label>Role</label>
+                    <select 
+                      className={styles.modalSelect} 
+                      value={addStaffForm.role} 
+                      onChange={e => setAddStaffForm({ ...addStaffForm, role: e.target.value })}
+                    >
+                      <option value="hod">HOD (Department Head)</option>
+                      <option value="principal">Principal (Institution Head)</option>
+                    </select>
+                  </div>
+                  {addStaffForm.role === 'hod' && (
+                    <div className={styles.inputGroup}>
+                      <label>Department Code</label>
+                      <input 
+                        type="text" 
+                        value={addStaffForm.department} 
+                        onChange={e => setAddStaffForm({ ...addStaffForm, department: e.target.value.toUpperCase() })} 
+                        placeholder="e.g. CSE, ECE, MECH" 
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className={styles.modalFooter}>
+                <button onClick={handleCreateStaff} className={styles.saveBtn} style={{ background: '#7c3aed' }}>Create Staff Account</button>
               </div>
             </motion.div>
           </div>

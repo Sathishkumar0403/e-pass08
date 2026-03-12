@@ -408,3 +408,12 @@ export async function forceResetPassword(targetUsername, newPassword, adminToken
     body: JSON.stringify({ targetUsername, newPassword, adminToken }),
   });
 }
+ e x p o r t   a s y n c   f u n c t i o n   a d d S t a f f ( s t a f f D a t a )   { 
+     c o n s t   a d m i n T o k e n   =   l o c a l S t o r a g e . g e t I t e m ( ' a d m i n T o k e n ' ) ; 
+     r e t u r n   a p i C a l l ( \ / a d m i n / a d d - s t a f f \ ,   { 
+         m e t h o d :   \  
+ P O S T \ , 
+         b o d y :   J S O N . s t r i n g i f y ( {   . . . s t a f f D a t a ,   a d m i n T o k e n   } ) , 
+     } ) ; 
+ }  
+ 
