@@ -1,4 +1,5 @@
 const { MongoClient } = require('mongodb');
+const fs = require('fs');
 require('dotenv').config({ path: 'e:/E-PASS/.env' });
 
 async function checkUsers() {
@@ -7,7 +8,8 @@ async function checkUsers() {
     await client.connect();
     const db = client.db('ebuspass');
     const users = await db.collection('admin_users').find({}).toArray();
-    console.log(JSON.stringify(users, null, 2));
+    fs.writeFileSync('e:/E-PASS/users_plain.txt', JSON.stringify(users, null, 2));
+    console.log('Done');
   } catch (err) {
     console.error(err);
   } finally {
