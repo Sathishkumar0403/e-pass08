@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FaUserShield, FaUser, FaLock, FaSignInAlt, FaEye, FaEyeSlash, FaExclamationCircle, FaTimes, FaShieldAlt, FaCheckCircle } from 'react-icons/fa';
 import { adminLogin, resetPassword } from '../utils/api';
 import styles from './AdminLogin.module.css';
