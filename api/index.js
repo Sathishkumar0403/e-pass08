@@ -450,6 +450,7 @@ app.get('/api/admin/export-excel', async (req, res) => {
 
 // Cancellation requests
 app.get('/api/admin/cancellation-requests', async (req, res) => {
+  try {
     const { role, department } = req.query;
     let query = {
       $or: [
