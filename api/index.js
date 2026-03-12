@@ -10,6 +10,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 
@@ -71,10 +72,90 @@ app.post('/api/admin/login', async (req, res) => {
       return res.json({ message: 'Login successful', token: 'admin-token',
         user: { id: 0, username: 'admin', role: 'admin', name: 'System Administrator' } });
     }
-    const user = await req.mongo.collection('admin_users').findOne({ username, password });
+    const user = await req.mongo.collection('admin_users').findOne({ username });
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+    // Check if password matches (handling both hashed and plain text for transition)
+    let isMatch = false;
+    const isHashed = user.password && user.password.startsWith('$2');
+    
+    if (isHashed) {
+      isMatch = await bcrypt.compare(password, user.password);
+    } else {
+      isMatch = (password === user.password);
+      // If it's a plain text match, we should hash it now for future safety
+      if (isMatch) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        await req.mongo.collection("admin_users").updateOne(
+          { _id: user._id },
+          { $set: { password: hashedPassword } }
+        );
+      }
+    }
+
+    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+
     res.json({ message: 'Login successful', token: `${user.role}-token`,
       user: { id: user._id, username: user.username, role: user.role, department: user.department, name: user.name } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Reset password route for Admin/HOD/Principal
+app.post('/api/admin/reset-password', async (req, res) => {
+  try {
+    const { username, oldPassword, newPassword } = req.body;
+    if (!username || !oldPassword || !newPassword) return res.status(400).json({ error: 'Missing required fields' });
+
+    const user = await req.mongo.collection("admin_users").findOne({ username });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let isMatch = false;
+    const isHashed = user.password && user.password.startsWith('$2');
+    if (isHashed) {
+      isMatch = await bcrypt.compare(oldPassword, user.password);
+    } else {
+      isMatch = (oldPassword === user.password);
+    }
+
+    if (!isMatch) return res.status(401).json({ error: 'Invalid old password' });
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await req.mongo.collection("admin_users").updateOne(
+      { username },
+      { $set: { password: hashedPassword, updatedAt: new Date().toISOString() } }
+    );
+
+    res.json({ message: 'Password reset successful' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: Force Reset Staff Password
+app.post('/api/admin/force-reset-password', async (req, res) => {
+  try {
+    const { targetUsername, newPassword, adminToken } = req.body;
+    if (adminToken !== 'admin-token') return res.status(403).json({ error: 'Unauthorized' });
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    const result = await req.mongo.collection("admin_users").updateOne(
+      { username: targetUsername },
+      { $set: { password: hashedPassword, updatedAt: new Date().toISOString() } }
+    );
+
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Staff user not found' });
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: List staff users
+app.get('/api/admin/staff-users', async (req, res) => {
+  try {
+    const users = await req.mongo.collection("admin_users").find({}, { projection: { password: 0 } }).toArray();
+    res.json(users);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
