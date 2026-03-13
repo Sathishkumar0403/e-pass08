@@ -313,6 +313,48 @@ app.post('/api/admin/reject-payment-pass', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── Admin: Mark payment as offline / waived / unpaid ──────────────────────────
+app.post('/api/admin/mark-payment', async (req, res) => {
+  try {
+    const { id, payment_type, note } = req.body;
+    // payment_type: 'offline' | 'waived' | 'unpaid'
+    if (!['offline', 'waived', 'unpaid'].includes(payment_type)) {
+      return res.status(400).json({ error: 'Invalid payment_type. Must be offline, waived, or unpaid.' });
+    }
+
+    const appRecord = await req.applications.findOne({ _id: new ObjectId(id) });
+    if (!appRecord) return res.status(404).json({ error: 'Application not found' });
+
+    const update = {
+      payment_status: payment_type,
+      payment_note: note || '',
+      payment_marked_at: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Auto-generate pass if application is already approved and payment is now confirmed
+    if (appRecord.status === 'approved' && (payment_type === 'offline' || payment_type === 'waived')) {
+      const currentYear = new Date().getFullYear();
+      const count = await req.applications.countDocuments({ passNumber: { $ne: null } });
+      const passNumber = appRecord.passNumber || `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+      const qrData = JSON.stringify({
+        name: appRecord.name,
+        regNo: appRecord.regNo || appRecord.reg_no,
+        route: appRecord.route,
+        passNumber,
+        paymentType: payment_type,
+        approvedAt: new Date().toISOString()
+      });
+      update.passNumber = passNumber;
+      update.qrData = qrData;
+      update.pass_approved = true;
+    }
+
+    await req.applications.updateOne({ _id: new ObjectId(id) }, { $set: update });
+    res.json({ message: `Payment marked as ${payment_type}` });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Route fees
 app.get('/api/admin/route-fees', async (req, res) => {
   try {
@@ -683,9 +725,18 @@ app.get('/api/student/payment-status/:regNo', async (req, res) => {
       $or: [{ regNo }, { reg_no: regNo }]
     });
     if (!student) return res.status(404).json({ error: 'Not found' });
-    res.json({ payment_status: student.payment_status || 'unpaid', amount: student.fee_amount || student.amount });
+    res.json({
+      payment_status: student.payment_status || 'unpaid',
+      payment_id: student.payment_id || null,
+      payment_amount: student.fee_amount || student.amount || null,
+      payment_date: student.payment_date || student.payment_marked_at || null,
+      payment_note: student.payment_note || null,
+      pass_approved: student.pass_approved || false,
+      passNumber: student.passNumber || null
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 
 app.post('/api/student/pay', async (req, res) => {
   try {

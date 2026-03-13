@@ -366,11 +366,13 @@ function StudentDashboard() {
                 </div>
 
                 <div className={styles.passVisual}>
-                  {studentData.status === 'approved' && 
-                   (paymentStatus.payment_status === 'verified' || studentData.payment_status === 'verified') && 
-                   !cancellationStatus.isCancelled ? (
-                    <BusPassTemplate studentData={studentData} />
-                  ) : (
+                  {(() => {
+                    const ps = paymentStatus.payment_status || studentData.payment_status;
+                    const paymentOk = ps === 'verified' || ps === 'offline' || ps === 'waived';
+                    const passReady = studentData.status === 'approved' && paymentOk && !cancellationStatus.isCancelled;
+                    return passReady ? (
+                      <BusPassTemplate studentData={studentData} />
+                    ) : (
                     <div className={styles.statusBox}>
                       <div className={`${styles.statusIllo} ${(cancellationStatus.isCancelled || studentData.status === 'cancelled') ? styles.cancelledIcon : ''}`}>
                         {(cancellationStatus.isCancelled || studentData.status === 'cancelled') ? <FaTimesCircle /> : <FaShieldAlt className={styles.shieldIcon} />}
@@ -380,18 +382,26 @@ function StudentDashboard() {
                           ? 'Pass Cancelled'
                           : studentData.status === 'rejected'
                             ? 'Application Rejected'
-                            : paymentStatus.payment_status === 'paid'
-                              ? 'Payment Verification Pending'
-                              : 'Application Under Review'}
+                            : (() => {
+                                const ps = paymentStatus.payment_status || studentData.payment_status;
+                                if (ps === 'paid') return 'Payment Verification Pending';
+                                if (ps === 'offline') return 'Offline Payment Recorded';
+                                if (ps === 'waived') return 'Fee Waived by Admin';
+                                return 'Application Under Review';
+                              })()}
                       </h4>
                       <p className={styles.statusDesc}>
                         {(cancellationStatus.isCancelled || studentData.status === 'cancelled')
                           ? `Your bus pass has been cancelled. Reason: ${cancellationStatus.cancellationReason || studentData.cancellation_reason || 'Administrative action'}`
                           : studentData.status === 'rejected'
                             ? `Your application was not approved. ${studentData.rejection_reason ? `Reason: ${studentData.rejection_reason}` : ''}`
-                            : paymentStatus.payment_status === 'paid'
-                              ? 'Your payment is being verified by the admin. Your pass will be generated shortly.'
-                              : 'Your pass will be active once admin approves and payment is complete.'}
+                            : (() => {
+                                const ps = paymentStatus.payment_status || studentData.payment_status;
+                                if (ps === 'paid') return 'Your payment is being verified by the admin. Your pass will be generated shortly.';
+                                if (ps === 'offline') return 'Your offline payment has been recorded by admin. Your pass is being processed.';
+                                if (ps === 'waived') return 'Your fee has been waived by the admin. Your pass is being processed.';
+                                return 'Your pass will be active once admin approves and payment is complete.';
+                              })()}
                       </p>
 
                       <div className={styles.checkRows}>
@@ -399,14 +409,19 @@ function StudentDashboard() {
                           {(studentData.status === 'approved' || studentData.status === 'cancelled') ? <FaCheckCircle /> : studentData.status === 'rejected' ? <FaTimesCircle /> : <FaSpinner className={styles.spin} />}
                           <span>Admin Approval ({studentData.status})</span>
                         </div>
-                        <div className={`${styles.checkRow} ${(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified') ? styles.done : styles.pending}`}>
-                          {(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified') ? <FaCheckCircle /> : <FaSpinner className={styles.spin} />}
-                          <span>Payment Status ({(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified') ? 'paid' : paymentStatus.payment_status})</span>
-                        </div>
-                        <div className={`${styles.checkRow} ${paymentStatus.payment_status === 'verified' ? styles.done : styles.pending}`}>
-                          {paymentStatus.payment_status === 'verified' ? <FaCheckCircle /> : <FaSpinner className={styles.spin} />}
-                          <span>Admin Payment Verification ({paymentStatus.payment_status === 'verified' ? 'verified' : 'pending'})</span>
-                        </div>
+                        {/* Payment row — shows label based on type */}
+                        {(() => {
+                          const ps = paymentStatus.payment_status || studentData.payment_status;
+                          const note = paymentStatus.payment_note;
+                          const isDone = ['paid','verified','offline','waived'].includes(ps);
+                          const label = ps === 'verified' ? 'Online (Verified)' : ps === 'offline' ? 'Offline Paid' : ps === 'waived' ? 'Fee Waived' : ps === 'paid' ? 'Paid (Pending verify)' : 'Unpaid';
+                          return (
+                            <div className={`${styles.checkRow} ${isDone ? styles.done : styles.pending}`}>
+                              {isDone ? <FaCheckCircle /> : <FaSpinner className={styles.spin} />}
+                              <span>Payment: {label}{note ? ` • ${note}` : ''}</span>
+                            </div>
+                          );
+                        })()}
                         {(cancellationStatus.isCancelled || studentData.status === 'cancelled') && (
                           <div className={`${styles.checkRow} ${styles.error}`}>
                             <FaTimesCircle />
@@ -415,7 +430,8 @@ function StudentDashboard() {
                         )}
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -431,7 +447,11 @@ function StudentDashboard() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleDownload}
                     className={styles.actionBtn}
-                    disabled={isDownloading || cancellationStatus.isCancelled || studentData.status !== 'approved' || (paymentStatus.payment_status !== 'verified' && studentData.payment_status !== 'verified')}
+                    disabled={(() => {
+                      const ps = paymentStatus.payment_status || studentData.payment_status;
+                      const paymentOk = ps === 'verified' || ps === 'offline' || ps === 'waived';
+                      return isDownloading || cancellationStatus.isCancelled || studentData.status !== 'approved' || !paymentOk;
+                    })()}
                   >
                     <div className={styles.actionIcon}><FaDownload /></div>
                     <div className={styles.actionText}>

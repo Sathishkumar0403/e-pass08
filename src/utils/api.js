@@ -417,6 +417,15 @@ export async function addStaff(staffData) {
   });
 }
 
+// ── Payment Management ─────────────────────────────────────────────────────────
+export async function markPayment(id, payment_type, note = '') {
+  return apiCall(`/admin/mark-payment`, {
+    method: 'POST',
+    body: JSON.stringify({ id, payment_type, note }),
+  });
+}
+
+
 // ── Colleges & Departments APIs ────────────────────────────────────────────────
 
 export async function getColleges() {

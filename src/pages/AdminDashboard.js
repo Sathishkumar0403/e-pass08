@@ -62,7 +62,8 @@ import {
   getAdminColleges,
   createCollege,
   updateCollege,
-  deleteCollege
+  deleteCollege,
+  markPayment
 } from '../utils/api';
 import { getImageUrl } from '../config';
 import styles from './AdminDashboard.module.css';
@@ -574,6 +575,20 @@ function AdminDashboard() {
     }
   };
 
+  // ── Payment Marking Handler ────────────────────────────────────────────────
+  const handleMarkPayment = async (id, payment_type, note = '') => {
+    const labels = { offline: 'Offline Paid', waived: 'Fee Waived', unpaid: 'Reset to Unpaid' };
+    if (!window.confirm(`Mark this application as "${labels[payment_type]}"?`)) return;
+    try {
+      await markPayment(id, payment_type, note);
+      setSuccessMessage(`Payment marked as ${labels[payment_type]}`);
+      refreshData('applications');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to update payment status');
+    }
+  };
+
   // ── College & Department Handlers ──────────────────────────────────────────
   const openAddCollege = () => {
     setEditingCollege(null);
@@ -779,6 +794,7 @@ function AdminDashboard() {
                           <th>Route</th>
                           <th>Documents</th>
                           <th>Status</th>
+                          <th>Payment</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -861,6 +877,80 @@ function AdminDashboard() {
                               <span className={`${styles.statusPill} ${styles[app.status]}`}>
                                 {app.status}
                               </span>
+                            </td>
+                            {/* ── Payment Status Column ── */}
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '130px' }}>
+                                {/* Badge showing current payment status */}
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '3px 9px',
+                                  borderRadius: '20px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  background:
+                                    app.payment_status === 'verified' ? '#dcfce7' :
+                                    app.payment_status === 'offline'  ? '#dbeafe' :
+                                    app.payment_status === 'waived'   ? '#f3e8ff' :
+                                    app.payment_status === 'paid'     ? '#fef9c3' :
+                                    '#f1f5f9',
+                                  color:
+                                    app.payment_status === 'verified' ? '#16a34a' :
+                                    app.payment_status === 'offline'  ? '#2563eb' :
+                                    app.payment_status === 'waived'   ? '#7c3aed' :
+                                    app.payment_status === 'paid'     ? '#ca8a04' :
+                                    '#64748b'
+                                }}>
+                                  {app.payment_status === 'verified' ? '✅ Verified' :
+                                   app.payment_status === 'offline'  ? '🏦 Offline' :
+                                   app.payment_status === 'waived'   ? '🎟 Waived' :
+                                   app.payment_status === 'paid'     ? '⏳ Pending Verify' :
+                                   '⬜ Unpaid'}
+                                </span>
+                                {/* Admin-only payment controls — only for approved applications */}
+                                {adminUser?.role === 'admin' && app.status === 'approved' && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                    {app.payment_status !== 'offline' && (
+                                      <button
+                                        title="Mark as Offline Payment Received"
+                                        onClick={() => handleMarkPayment(app.id, 'offline')}
+                                        style={{
+                                          fontSize: '0.65rem', padding: '3px 7px', border: 'none',
+                                          borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
+                                          background: '#dbeafe', color: '#1d4ed8'
+                                        }}
+                                      >🏦 Offline</button>
+                                    )}
+                                    {app.payment_status !== 'waived' && (
+                                      <button
+                                        title="Waive / Approve without payment"
+                                        onClick={() => handleMarkPayment(app.id, 'waived')}
+                                        style={{
+                                          fontSize: '0.65rem', padding: '3px 7px', border: 'none',
+                                          borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
+                                          background: '#f3e8ff', color: '#7c3aed'
+                                        }}
+                                      >🎟 Waive</button>
+                                    )}
+                                    {(app.payment_status === 'offline' || app.payment_status === 'waived') && (
+                                      <button
+                                        title="Reset payment to unpaid"
+                                        onClick={() => handleMarkPayment(app.id, 'unpaid')}
+                                        style={{
+                                          fontSize: '0.65rem', padding: '3px 7px', border: 'none',
+                                          borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
+                                          background: '#fee2e2', color: '#dc2626'
+                                        }}
+                                      >↩ Reset</button>
+                                    )}
+                                  </div>
+                                )}
+                                {app.payment_note && (
+                                  <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                                    {app.payment_note}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td>
                               <div className={styles.actionRow}>
