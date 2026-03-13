@@ -371,10 +371,18 @@ function StudentDashboard() {
 
                 <div className={styles.passVisual}>
                   {(() => {
-                    const getSafePS = () => (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
-                    const ps = getSafePS();
-                    const paymentOk = ps === 'verified' || ps === 'offline' || ps === 'waived';
-                    const passReady = studentData.status === 'approved' && paymentOk && !cancellationStatus.isCancelled;
+                    // PRIMARY source: studentData direct from DB (refreshed every 10s)
+                    // FALLBACK: paymentStatus state (separate API call)
+                    const dbPS = studentData?.payment_status;
+                    const statePS = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') 
+                      ? paymentStatus.payment_status 
+                      : null;
+                    // Use DB value if it's a cleared status, otherwise use state
+                    const CLEARED = ['verified', 'offline', 'waived'];
+                    const ps = CLEARED.includes(dbPS) ? dbPS : (statePS || dbPS || 'unpaid');
+                    const paymentOk = CLEARED.includes(ps);
+                    // Also respect pass_approved flag set by the backend
+                    const passReady = studentData.status === 'approved' && (paymentOk || studentData.pass_approved === true) && !cancellationStatus.isCancelled;
                     return passReady ? (
                       <BusPassTemplate studentData={studentData} />
                     ) : (
@@ -419,9 +427,14 @@ function StudentDashboard() {
                         </div>
                         {/* Payment row — shows label based on type */}
                         {(() => {
-                           // Aggressively check both paymentStatus state AND studentData for status
-                           let ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
-                           // Final database fallback
+                           // Same consistent logic: DB is primary
+                           const dbPS = studentData?.payment_status;
+                           const statePS = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending')
+                             ? paymentStatus.payment_status : null;
+                           const CLEARED = ['verified', 'offline', 'waived'];
+                           let ps = CLEARED.includes(dbPS) ? dbPS : (statePS || dbPS || 'unpaid');
+                           // Final fallback to pass_approved
+                           if (!CLEARED.includes(ps) && studentData?.pass_approved) ps = 'verified';
                            if (ps === 'unpaid' && studentData?.payment_status && studentData.payment_status !== 'unpaid') ps = studentData.payment_status;
                            
                            const note = paymentStatus.payment_note;
@@ -460,8 +473,10 @@ function StudentDashboard() {
                     onClick={handleDownload}
                     className={styles.actionBtn}
                     disabled={(() => {
-                      const ps = paymentStatus.payment_status || studentData.payment_status;
-                      const paymentOk = ps === 'verified' || ps === 'offline' || ps === 'waived';
+                      const dbPS = studentData?.payment_status;
+                      const CLEARED = ['verified', 'offline', 'waived'];
+                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                      const paymentOk = CLEARED.includes(ps) || studentData?.pass_approved === true;
                       return isDownloading || cancellationStatus.isCancelled || studentData.status !== 'approved' || !paymentOk;
                     })()}
                   >
@@ -477,23 +492,29 @@ function StudentDashboard() {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowPaymentModal(true)}
                     className={`${styles.actionBtn} ${(() => {
-                      const ps = paymentStatus.payment_status || studentData.payment_status;
-                      const isDone = ['paid', 'verified', 'offline', 'waived'].includes(ps);
+                      const dbPS = studentData?.payment_status;
+                      const CLEARED = ['verified', 'offline', 'waived'];
+                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                      const isDone = ['paid', 'verified', 'offline', 'waived'].includes(ps) || studentData?.pass_approved;
                       return isDone ? '' : styles.actionActive;
                     })()}`}
                     disabled={(() => {
-                      const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
-                      return ['paid', 'verified', 'offline', 'waived'].includes(ps);
+                      const dbPS = studentData?.payment_status;
+                      const CLEARED = ['verified', 'offline', 'waived'];
+                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                      return ['paid', 'verified', 'offline', 'waived'].includes(ps) || studentData?.pass_approved === true;
                     })()}
                   >
                     <div className={styles.actionIcon}><FaCreditCard /></div>
                     <div className={styles.actionText}>
                       <span className={styles.label}>
                         {(() => {
-                          const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
-                          if (ps === 'verified' || ps === 'offline' || ps === 'waived') return 'Fees Cleared ✓';
-                          if (ps === 'paid') return 'Payment Pending Verify';
-                          return 'Pay Pass Fees';
+                           const dbPS = studentData?.payment_status;
+                           const CLEARED = ['verified', 'offline', 'waived'];
+                           const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                           if (CLEARED.includes(ps) || studentData?.pass_approved) return 'Fees Cleared ✓';
+                           if (ps === 'paid') return 'Payment Pending Verify';
+                           return 'Pay Pass Fees';
                         })()}
                       </span>
                       <span className={styles.desc}>
@@ -511,8 +532,12 @@ function StudentDashboard() {
                   </motion.button>
 
                   {(() => {
-                    const ps = paymentStatus.payment_status || studentData.payment_status;
-                    if (ps === 'verified' || ps === 'waived') return null;
+                    const ps2 = (() => {
+                      const dbPS = studentData?.payment_status;
+                      const CLEARED = ['verified', 'offline', 'waived'];
+                      return CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                    })();
+                    if (ps2 === 'verified' || ps2 === 'waived' || studentData?.pass_approved) return null;
                     
                     return (
                       <div className={styles.uploadCard}>
