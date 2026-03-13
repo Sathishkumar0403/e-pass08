@@ -728,13 +728,23 @@ app.post('/api/student/verify-payment', async (req, res) => {
 
 app.post('/api/student/request-cancellation', async (req, res) => {
   try {
+    // Check if cancellations are enabled
+    const setting = await req.mongo.collection('system_settings').findOne({ key: 'cancellations_enabled' });
+    const enabled = setting && (setting.value === '1' || setting.value === 1 || setting.value === true);
+    if (!enabled) {
+      return res.status(403).json({ error: 'Cancellation period is currently closed. Please contact admin.' });
+    }
+
     const { regNo, reason } = req.body;
+    if (!regNo || !reason) return res.status(400).json({ error: 'Registration number and reason are required' });
+
     await req.applications.updateOne(
       { $or: [{ regNo }, { reg_no: regNo }] },
       { $set: { cancellation_requested: 1, cancellation_reason: reason, updatedAt: new Date().toISOString() } });
     res.json({ message: 'Cancellation requested' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 
 app.get('/api/student/get-fee/:route', async (req, res) => {
   try {

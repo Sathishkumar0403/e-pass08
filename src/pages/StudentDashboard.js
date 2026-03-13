@@ -54,6 +54,13 @@ function StudentDashboard() {
   const [systemSettings, setSystemSettings] = useState({});
   const [showTandC, setShowTandC] = useState(false);
 
+  // Fetch system settings immediately on mount (before login)
+  useEffect(() => {
+    getSystemSettings()
+      .then(s => setSystemSettings(s || {}))
+      .catch(() => {});
+  }, []);
+
   const checkStatus = useCallback(async () => {
     if (!studentData?.regNo) return;
 
@@ -101,9 +108,10 @@ function StudentDashboard() {
         }
       }
 
+      // Refresh system settings on every status check
       try {
         const settings = await getSystemSettings();
-        setSystemSettings(settings);
+        setSystemSettings(settings || {});
       } catch (err) { }
     } catch (err) { }
   }, [studentData?.regNo, studentData?.route]);
@@ -477,13 +485,25 @@ function StudentDashboard() {
 
                   <button
                     onClick={() => setShowTandC(true)}
-                    className={String(systemSettings.cancellations_enabled) === '1' ? styles.dangerBtn : styles.disabledBtn}
-                    disabled={String(systemSettings.cancellations_enabled) !== '1' || cancellationStatus.cancellationRequested || cancellationStatus.isCancelled || studentData.status === 'cancelled'}
+                    className={(() => {
+                      const v = systemSettings.cancellations_enabled;
+                      const enabled = v === '1' || v === 1 || v === true || v === 'true';
+                      return enabled ? styles.dangerBtn : styles.disabledBtn;
+                    })()}
+                    disabled={(() => {
+                      const v = systemSettings.cancellations_enabled;
+                      const enabled = v === '1' || v === 1 || v === true || v === 'true';
+                      return !enabled || cancellationStatus.cancellationRequested || cancellationStatus.isCancelled || studentData.status === 'cancelled';
+                    })()}
                   >
-                    <FaTimesCircle /> 
-                    {String(systemSettings.cancellations_enabled) === '1' 
-                      ? (cancellationStatus.isCancelled || studentData.status === 'cancelled' ? 'Pass Cancelled' : (cancellationStatus.cancellationRequested ? 'Cancellation Pending' : 'Cancel My Pass'))
-                      : 'Cancellation Period Closed'}
+                    <FaTimesCircle />
+                    {(() => {
+                      const v = systemSettings.cancellations_enabled;
+                      const enabled = v === '1' || v === 1 || v === true || v === 'true';
+                      if (cancellationStatus.isCancelled || studentData.status === 'cancelled') return 'Pass Cancelled';
+                      if (cancellationStatus.cancellationRequested) return 'Cancellation Pending';
+                      return enabled ? 'Cancel My Pass' : 'Cancellation Period Closed';
+                    })()}
                   </button>
                 </div>
               </div>
