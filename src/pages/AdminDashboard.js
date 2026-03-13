@@ -58,7 +58,11 @@ import {
   resetPassword,
   getStaffUsers,
   forceResetPassword,
-  addStaff
+  addStaff,
+  getAdminColleges,
+  createCollege,
+  updateCollege,
+  deleteCollege
 } from '../utils/api';
 import { getImageUrl } from '../config';
 import styles from './AdminDashboard.module.css';
@@ -122,6 +126,11 @@ function AdminDashboard() {
   const [staffResetForm, setStaffResetForm] = useState({ newPassword: '', confirmPassword: '' });
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [addStaffForm, setAddStaffForm] = useState({ username: '', password: '', role: 'hod', department: '' });
+  // Colleges & Departments
+  const [colleges, setColleges] = useState([]);
+  const [showCollegeModal, setShowCollegeModal] = useState(false);
+  const [editingCollege, setEditingCollege] = useState(null);
+  const [collegeForm, setCollegeForm] = useState({ name: '', departments: '' });
   const navigate = useNavigate();
 
   const refreshData = useCallback(async (type = 'all') => {
@@ -170,6 +179,10 @@ function AdminDashboard() {
         const settingsMap = {};
         settingsData.forEach(s => settingsMap[s.key] = s.value);
         setSystemSettings(settingsMap);
+      }
+
+      if (type === 'all' || type === 'colleges') {
+        getAdminColleges().then(setColleges).catch(() => {});
       }
     } catch (err) {
       console.error(`Error refreshing ${type}:`, err);
@@ -561,10 +574,65 @@ function AdminDashboard() {
     }
   };
 
+  // ── College & Department Handlers ──────────────────────────────────────────
+  const openAddCollege = () => {
+    setEditingCollege(null);
+    setCollegeForm({ name: '', departments: '' });
+    setShowCollegeModal(true);
+  };
+
+  const openEditCollege = (college) => {
+    setEditingCollege(college);
+    setCollegeForm({ name: college.name, departments: (college.departments || []).join(', ') });
+    setShowCollegeModal(true);
+  };
+
+  const handleSaveCollege = async () => {
+    if (!collegeForm.name.trim()) {
+      setError('College name is required');
+      return;
+    }
+    const deptArray = collegeForm.departments
+      .split(',')
+      .map(d => d.trim())
+      .filter(Boolean);
+
+    try {
+      if (editingCollege) {
+        await updateCollege(editingCollege.id, { name: collegeForm.name.trim(), departments: deptArray });
+        setSuccessMessage('College updated successfully');
+      } else {
+        await createCollege({ name: collegeForm.name.trim(), departments: deptArray });
+        setSuccessMessage('College added successfully');
+      }
+      setShowCollegeModal(false);
+      setEditingCollege(null);
+      setCollegeForm({ name: '', departments: '' });
+      refreshData('colleges');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to save college');
+    }
+  };
+
+  const handleDeleteCollege = async (id, name) => {
+    if (!window.confirm(`Delete college "${name}"? This cannot be undone.`)) return;
+    try {
+      await deleteCollege(id);
+      setSuccessMessage('College deleted');
+      refreshData('colleges');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to delete college');
+    }
+  };
+
+
   const containerVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
   };
+
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
@@ -1194,12 +1262,82 @@ function AdminDashboard() {
                       </div>
                     </div>
                   </div>
+
+                  {/* ── Colleges & Departments Management ── */}
+                  <div className={styles.settingCard} style={{ gridColumn: '1 / -1', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <div className={styles.settingInfo} style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                        <div>
+                          <h3 style={{ color: '#1e293b' }}>Colleges &amp; Departments</h3>
+                          <p style={{ color: '#64748b' }}>Manage colleges and their departments. Students see these options in the application form.</p>
+                        </div>
+                        <button
+                          className={styles.addBtn}
+                          onClick={openAddCollege}
+                          style={{ margin: 0, padding: '8px 16px' }}
+                        >
+                          <FaPlus /> Add College
+                        </button>
+                      </div>
+
+                      {colleges.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', background: '#f8fafc', borderRadius: '12px' }}>
+                          <FaUserGraduate style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.4 }} />
+                          <p>No colleges added yet. Click "Add College" to get started.</p>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', width: '100%' }}>
+                          {colleges.map(college => (
+                            <div key={college.id} style={{
+                              background: '#f8fafc',
+                              borderRadius: '12px',
+                              padding: '1.2rem',
+                              border: '1px solid #e2e8f0',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.75rem'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                <h4 style={{ color: '#1e293b', fontSize: '0.9rem', fontWeight: 700, margin: 0, flex: 1 }}>{college.name}</h4>
+                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                  <button onClick={() => openEditCollege(college)} className={styles.editBtn} title="Edit College" style={{ padding: '4px 8px' }}>
+                                    <FaEdit />
+                                  </button>
+                                  <button onClick={() => handleDeleteCollege(college.id, college.name)} className={styles.trashBtn} title="Delete College" style={{ padding: '4px 8px' }}>
+                                    <FaTrash />
+                                  </button>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {(college.departments || []).length === 0 ? (
+                                  <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontStyle: 'italic' }}>No departments added</span>
+                                ) : (
+                                  college.departments.map(dept => (
+                                    <span key={dept} style={{
+                                      background: '#e0e7ff',
+                                      color: '#4338ca',
+                                      padding: '3px 10px',
+                                      borderRadius: '20px',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 600
+                                    }}>{dept}</span>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </section>
       </main>
+
 
       {/* Modals */}
       <AnimatePresence>
@@ -1632,7 +1770,63 @@ function AdminDashboard() {
             </motion.div>
           </div>
         )}
+
+        {/* ── College Add/Edit Modal ── */}
+
+        {showCollegeModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowCollegeModal(false)}>
+            <motion.div className={styles.modalPanel} onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+              <div className={styles.modalHeader}>
+                <h3>{editingCollege ? 'Edit College' : 'Add New College'}</h3>
+                <button onClick={() => setShowCollegeModal(false)} className={styles.closeModalBtn}><FaTimes /></button>
+              </div>
+              <div className={styles.modalBody}>
+                <div className={styles.inputGroup}>
+                  <label>College Name</label>
+                  <input
+                    type="text"
+                    value={collegeForm.name}
+                    onChange={e => setCollegeForm({ ...collegeForm, name: e.target.value })}
+                    placeholder="e.g. Adhiyamaan College of Engineering"
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>Departments (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={collegeForm.departments}
+                    onChange={e => setCollegeForm({ ...collegeForm, departments: e.target.value })}
+                    placeholder="e.g. CSE, ECE, EEE, MECH, CIVIL"
+                  />
+                  <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px' }}>
+                    Enter department codes separated by commas. Students will see this list when they select this college.
+                  </p>
+                </div>
+                {/* Preview of departments */}
+                {collegeForm.departments && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>Preview:</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {collegeForm.departments.split(',').map((d, i) => d.trim() && (
+                        <span key={i} style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600 }}>
+                          {d.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className={styles.modalFooter}>
+                <button onClick={handleSaveCollege} className={styles.saveBtn} style={{ background: '#7c3aed' }}>
+                  {editingCollege ? 'Update College' : 'Add College'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
       </AnimatePresence>
+
     </div>
   );
 }

@@ -418,7 +418,61 @@ app.get('/api/admin/bus-seat-counts', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Settings
+// ── Colleges & Departments Management ─────────────────────────────────────────
+
+// Public: get all colleges with departments (for student form)
+app.get('/api/public/colleges', async (req, res) => {
+  try {
+    const colleges = await req.mongo.collection('colleges').find({}).sort({ name: 1 }).toArray();
+    res.json(colleges.map(c => ({ id: c._id.toString(), name: c.name, departments: c.departments || [] })));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: get all colleges
+app.get('/api/admin/colleges', async (req, res) => {
+  try {
+    const colleges = await req.mongo.collection('colleges').find({}).sort({ name: 1 }).toArray();
+    res.json(colleges.map(c => ({ id: c._id.toString(), name: c.name, departments: c.departments || [] })));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: add a college
+app.post('/api/admin/colleges', async (req, res) => {
+  try {
+    const { name, departments } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'College name is required' });
+    const existing = await req.mongo.collection('colleges').findOne({ name: { $regex: new RegExp(`^${name.trim()}$`, 'i') } });
+    if (existing) return res.status(400).json({ error: 'College already exists' });
+    const result = await req.mongo.collection('colleges').insertOne({
+      name: name.trim(),
+      departments: (departments || []).map(d => d.trim()).filter(Boolean),
+      createdAt: new Date().toISOString()
+    });
+    res.json({ message: 'College added', id: result.insertedId.toString() });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: update college (rename or replace departments list)
+app.put('/api/admin/colleges/:id', async (req, res) => {
+  try {
+    const { name, departments } = req.body;
+    const update = { updatedAt: new Date().toISOString() };
+    if (name) update.name = name.trim();
+    if (departments !== undefined) update.departments = departments.map(d => d.trim()).filter(Boolean);
+    await req.mongo.collection('colleges').updateOne({ _id: new ObjectId(req.params.id) }, { $set: update });
+    res.json({ message: 'College updated' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Admin: delete a college
+app.delete('/api/admin/colleges/:id', async (req, res) => {
+  try {
+    await req.mongo.collection('colleges').deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ message: 'College deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+
 app.get('/api/admin/settings', async (req, res) => {
   try {
     const settings = await req.mongo.collection('system_settings').find({}).toArray();

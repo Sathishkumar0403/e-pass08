@@ -4,10 +4,10 @@ import {
   FaUser, FaCalendarAlt, FaIdCard, FaGraduationCap, FaPhone,
   FaUserFriends, FaHome, FaBus, FaImage, FaIdBadge,
   FaUserGraduate, FaCheckCircle, FaExclamationTriangle,
-  FaFileAlt, FaMapMarkerAlt, FaShieldAlt, FaSpinner
+  FaFileAlt, FaMapMarkerAlt, FaShieldAlt, FaSpinner, FaUniversity
 } from 'react-icons/fa';
 import styles from './StudentForm.module.css';
-import { applyStudent, getRouteFees } from '../utils/api';
+import { applyStudent, getRouteFees, getColleges } from '../utils/api';
 import LocationAutocomplete from './LocationAutocomplete';
 
 const INITIAL_FORM_STATE = {
@@ -39,20 +39,37 @@ function StudentForm() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [routeOptions, setRouteOptions] = useState([]);
-  const [fromOptions, setFromOptions] = useState([]);
   const [toOptions, setToOptions] = useState([]);
+  const [collegeList, setCollegeList] = useState([]);
+  const [availableDepts, setAvailableDepts] = useState([]);
+  const [collegesLoading, setCollegesLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch available routes for suggestions
     getRouteFees().then(data => {
       setRouteOptions(data || []);
-      // Extract unique 'to' locations for destination suggestions
       const destinations = [...new Set(data.map(item => item.to))].filter(Boolean);
       setToOptions(destinations);
     }).catch(err => console.error('Error fetching routes:', err));
+
+    getColleges().then(data => {
+      setCollegeList(data || []);
+    }).catch(() => {
+      setCollegeList([
+        { id: '1', name: 'Adhiyamaan college of engineering', departments: ['CSE','EEE','ECE','MECH','CIVIL'] },
+        { id: '2', name: 'Adhiyamaan polytechnic college', departments: ['MECH','EEE','CIVIL'] },
+        { id: '3', name: 'M.G.R college', departments: ['CSE','EEE'] },
+        { id: '4', name: 'St.Peters medical college and hospital', departments: ['MBBS','Nursing','Pharmacy'] },
+      ]);
+    }).finally(() => setCollegesLoading(false));
   }, []);
 
-  // Route selection logic removed as per static Origin requirement
+  const handleCollegeChange = (e) => {
+    const selectedName = e.target.value;
+    const selectedCollege = collegeList.find(c => c.name === selectedName);
+    setAvailableDepts(selectedCollege ? selectedCollege.departments : []);
+    setForm(prev => ({ ...prev, college: selectedName, department: '' }));
+    setError('');
+  };
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -64,7 +81,7 @@ function StudentForm() {
     } else {
       setForm(prev => ({ ...prev, [name]: value }));
     }
-    setError(''); // Clear error on change
+    setError('');
   };
 
   const handleRemoveFile = (field) => {
@@ -77,6 +94,7 @@ function StudentForm() {
       { key: 'fatherName', label: "Father's Name" },
       { key: 'dob', label: 'Date of Birth' },
       { key: 'regNo', label: 'Registration Number' },
+      { key: 'college', label: 'College Name' },
       { key: 'year', label: 'Year' },
       { key: 'department', label: 'Department' },
       { key: 'mobile', label: 'Mobile Number' },
@@ -84,30 +102,24 @@ function StudentForm() {
       { key: 'address', label: 'Address' },
       { key: 'from', label: 'From (Origin)' },
       { key: 'to', label: 'To (Destination)' },
-      { key: 'college', label: 'College Name' },
       { key: 'aadharNumber', label: 'Aadhar Number' },
       { key: 'busNumber', label: 'Bus Number' },
     ];
 
     const missing = requiredFields.filter(f => !form[f.key]).map(f => f.label);
-
     if (missing.length > 0) {
       return `Please fill in the following required fields: ${missing.join(', ')}`;
     }
-
     if (!form.photo || !form.collegeIdPhoto) {
       return 'Please upload both Profile Photo and ID/Fee Bill';
     }
-
     const mobileRegex = /^[6-9]\d{9}$/;
     if (!mobileRegex.test(form.mobile) || !mobileRegex.test(form.parentMobile)) {
       return 'Please enter valid 10-digit mobile numbers';
     }
-
     if (form.aadharNumber.length !== 12) {
       return 'Aadhar Number must be exactly 12 digits';
     }
-
     return null;
   };
 
@@ -124,7 +136,6 @@ function StudentForm() {
 
     setIsSubmitting(true);
     try {
-      // Find matching route fee if it exists to get the canonical route name and fee
       const matchingFee = routeOptions.find(opt => opt.to === form.to);
       const submitData = {
         ...form,
@@ -137,6 +148,7 @@ function StudentForm() {
       if (res.message === 'Application submitted' || res.message === 'Application submitted successfully' || res.id) {
         setMessage('Application submitted successfully!');
         setForm(INITIAL_FORM_STATE);
+        setAvailableDepts([]);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setError(res.error || 'Submission failed');
@@ -156,19 +168,15 @@ function StudentForm() {
   return (
     <div className={styles.formWrapper}>
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
+
         {/* Section 1: Personal Info */}
-        <motion.div
-          className={styles.card}
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          transition={{ duration: 0.5 }}
-        >
+        <motion.div className={styles.card} variants={cardVariants} initial="hidden" animate="visible" transition={{ duration: 0.5 }}>
           <div className={styles.cardHeader}>
             <div className={styles.cardIcon}><FaUser /></div>
             <h3 className={styles.cardTitle}>Personal Information</h3>
           </div>
           <div className={styles.grid}>
+
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Full Name</label>
               <div className={styles.inputWrapper}>
@@ -176,6 +184,7 @@ function StudentForm() {
                 <input type="text" name="name" value={form.name} onChange={handleChange} placeholder="John Doe" required className={styles.input} />
               </div>
             </div>
+
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Father's Name</label>
               <div className={styles.inputWrapper}>
@@ -183,6 +192,7 @@ function StudentForm() {
                 <input type="text" name="fatherName" value={form.fatherName} onChange={handleChange} placeholder="Father's Name" required className={styles.input} />
               </div>
             </div>
+
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Date of Birth</label>
               <div className={styles.inputWrapper}>
@@ -190,6 +200,7 @@ function StudentForm() {
                 <input type="date" name="dob" value={form.dob} onChange={handleChange} required className={styles.input} />
               </div>
             </div>
+
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Registration Number</label>
               <div className={styles.inputWrapper}>
@@ -197,6 +208,52 @@ function StudentForm() {
                 <input type="text" name="regNo" value={form.regNo} onChange={handleChange} placeholder="CS123456" required className={styles.input} />
               </div>
             </div>
+
+            {/* ── College Name — shown BEFORE Department ── */}
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>College Name</label>
+              <div className={styles.inputWrapper}>
+                <FaUniversity className={styles.inputIcon} />
+                <select name="college" value={form.college} onChange={handleCollegeChange} required className={styles.select}>
+                  <option value="">{collegesLoading ? 'Loading colleges...' : '-- Select College --'}</option>
+                  {collegeList.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* ── Department — filtered by selected college ── */}
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>
+                Department
+                {!form.college && <span style={{ color: '#94a3b8', fontSize: '0.75rem', marginLeft: '6px' }}>(select college first)</span>}
+              </label>
+              <div className={styles.inputWrapper}>
+                <FaGraduationCap className={styles.inputIcon} />
+                <select
+                  name="department"
+                  value={form.department}
+                  onChange={handleChange}
+                  required
+                  disabled={!form.college || availableDepts.length === 0}
+                  className={styles.select}
+                  style={!form.college ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                >
+                  <option value="">
+                    {!form.college
+                      ? 'Select college first'
+                      : availableDepts.length === 0
+                        ? 'No departments configured'
+                        : '-- Select Department --'}
+                  </option>
+                  {availableDepts.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Year</label>
               <div className={styles.inputWrapper}>
@@ -211,20 +268,7 @@ function StudentForm() {
                 </select>
               </div>
             </div>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Department</label>
-              <div className={styles.inputWrapper}>
-                <FaGraduationCap className={styles.inputIcon} />
-                <select name="department" value={form.department} onChange={handleChange} required className={styles.select}>
-                  <option value="">Select Department</option>
-                  <option value="CSE">CSE</option>
-                  <option value="EEE">EEE</option>
-                  <option value="ECE">ECE</option>
-                  <option value="MECH">MECH</option>
-                  <option value="CIVIL">CIVIL</option>
-                </select>
-              </div>
-            </div>
+
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Application Type</label>
               <div className={styles.inputWrapper}>
@@ -236,17 +280,12 @@ function StudentForm() {
                 </select>
               </div>
             </div>
+
           </div>
         </motion.div>
 
         {/* Section 2: Contact Info */}
-        <motion.div
-          className={styles.card}
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
+        <motion.div className={styles.card} variants={cardVariants} initial="hidden" animate="visible" transition={{ duration: 0.5, delay: 0.1 }}>
           <div className={styles.cardHeader}>
             <div className={styles.cardIcon}><FaPhone /></div>
             <h3 className={styles.cardTitle}>Contact Details</h3>
@@ -283,31 +322,12 @@ function StudentForm() {
         </motion.div>
 
         {/* Section 3: Journey Details */}
-        <motion.div
-          className={styles.card}
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
+        <motion.div className={styles.card} variants={cardVariants} initial="hidden" animate="visible" transition={{ duration: 0.5, delay: 0.2 }}>
           <div className={styles.cardHeader}>
             <div className={styles.cardIcon}><FaBus /></div>
             <h3 className={styles.cardTitle}>Journey Details</h3>
           </div>
           <div className={styles.grid}>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>College Name</label>
-              <div className={styles.inputWrapper}>
-                <FaGraduationCap className={styles.inputIcon} />
-                <select name="college" value={form.college} onChange={handleChange} required className={styles.select}>
-                  <option value="">Select College</option>
-                  <option value="Adhiyamaan college of engineering">Adhiyamaan college of engineering</option>
-                  <option value="adhiyamaan polytechnic college">adhiyamaan polytechnic college</option>
-                  <option value="M.G.R college">M.G.R college</option>
-                  <option value="st.peters medical college and hospital">st.peters medical college and hospital</option>
-                </select>
-              </div>
-            </div>
             <div className={styles.fieldGroup}>
               <label className={styles.label}>From (Origin)</label>
               <div className={styles.inputWrapper}>
@@ -322,15 +342,9 @@ function StudentForm() {
                 value={form.to}
                 onChange={(e) => {
                   const val = e.target.value;
-                  // If we picked a local suggestion, find its details
                   const matchingFee = routeOptions.find(opt => opt.to === val);
                   if (matchingFee) {
-                    setForm(prev => ({
-                      ...prev,
-                      to: val,
-                      route: matchingFee.route,
-                      fee_amount: matchingFee.fee_amount
-                    }));
+                    setForm(prev => ({ ...prev, to: val, route: matchingFee.route, fee_amount: matchingFee.fee_amount }));
                   } else {
                     setForm(prev => ({ ...prev, to: val }));
                   }
@@ -354,13 +368,7 @@ function StudentForm() {
         </motion.div>
 
         {/* Section 4: Documents */}
-        <motion.div
-          className={styles.card}
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
+        <motion.div className={styles.card} variants={cardVariants} initial="hidden" animate="visible" transition={{ duration: 0.5, delay: 0.3 }}>
           <div className={styles.cardHeader}>
             <div className={styles.cardIcon}><FaFileAlt /></div>
             <h3 className={styles.cardTitle}>Required Documents</h3>
@@ -424,6 +432,7 @@ function StudentForm() {
             )}
           </button>
         </div>
+
       </form>
     </div>
   );

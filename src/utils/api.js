@@ -416,3 +416,33 @@ export async function addStaff(staffData) {
     body: JSON.stringify({ ...staffData, adminToken }),
   });
 }
+
+// ── Colleges & Departments APIs ────────────────────────────────────────────────
+
+export async function getColleges() {
+  return apiCall(`/public/colleges`);
+}
+
+export async function getAdminColleges() {
+  return apiCall(`/admin/colleges`);
+}
+
+export async function createCollege(data) {
+  return apiCall(`/admin/colleges`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCollege(id, data) {
+  return apiCall(`/admin/colleges/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCollege(id) {
+  return apiCall(`/admin/colleges/${id}`, {
+    method: 'DELETE',
+  });
+}
