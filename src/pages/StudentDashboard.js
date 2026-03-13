@@ -546,10 +546,10 @@ function StudentDashboard() {
                             <FaUpload className={styles.uploadIcon} />
                             <div>
                               <span className={styles.uploadLabel}>
-                                {ps === 'offline' ? 'Offline Receipt' : 'Payment Document'}
+                                {ps2 === 'offline' ? 'Offline Receipt' : 'Payment Document'}
                               </span>
                               <span className={styles.uploadDesc}>
-                                {selectedFile ? selectedFile.name : (ps === 'offline' ? 'Upload receipt for offline payment' : 'Upload receipt if paid offline')}
+                                {selectedFile ? selectedFile.name : (ps2 === 'offline' ? 'Upload receipt for offline payment' : 'Upload receipt if paid offline')}
                               </span>
                             </div>
                           </div>
