@@ -1194,7 +1194,11 @@ function AdminDashboard() {
                                 payment.payment_id
                               )}
                             </td>
-                            <td className={styles.boldText}>₹{payment.fee_amount || payment.payment_amount || 'N/A'}</td>
+                            <td className={styles.boldText}>
+                              {(payment.payment_status === 'offline' || payment.payment_status === 'waived') 
+                                ? '--' 
+                                : `₹${payment.fee_amount || payment.payment_amount || 'N/A'}`}
+                            </td>
                             <td>{new Date(payment.payment_date).toLocaleString()}</td>
                             <td>
                               <div className={styles.flexCol}>

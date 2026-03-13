@@ -492,7 +492,7 @@ function StudentDashboard() {
                           if (ps === 'verified' || ps === 'paid') return `ID: ${paymentStatus.payment_id || 'Online Payment'}`;
                           
                           const amt = routeFee?.fee_amount || studentData?.fee_amount;
-                          return amt ? `₹${amt} · Secure online payment` : 'Secure online payment';
+                          return (ps === 'offline' || ps === 'waived') ? 'Process offline' : (amt ? `₹${amt} · Secure online payment` : 'Secure online payment');
                         })()}
                       </span>
                     </div>

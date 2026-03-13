@@ -323,25 +323,19 @@ app.post('/api/admin/mark-payment', async (req, res) => {
       payment_status: payment_type,
       payment_note: note || '',
       payment_marked_at: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      // Ensure pass is NOT generated yet for offline/waived
+      passNumber: null,
+      qrData: null,
+      pass_approved: false
     };
 
-    // Auto-generate pass and approve if payment is offline/waived
-    if (payment_type === 'offline' || payment_type === 'waived') {
-      const { passNumber, qrData } = await generatePassData(req, appRecord);
-      update.passNumber = passNumber;
-      update.qrData = qrData;
-      update.pass_approved = true;
-      update.status = 'approved';
-    } else if (payment_type === 'unpaid') {
-      // Clear pass if reset to unpaid
-      update.passNumber = null;
-      update.qrData = null;
-      update.pass_approved = false;
+    if (payment_type === 'unpaid') {
+      update.status = 'pending'; // Reset status if unpaid
     }
 
     await req.applications.updateOne({ _id: new ObjectId(id) }, { $set: update });
-    res.json({ message: `Payment marked as ${payment_type} and application approved` });
+    res.json({ message: `Payment marked as ${payment_type}. Pass will be generated after verification.` });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
