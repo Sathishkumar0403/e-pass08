@@ -1177,7 +1177,23 @@ function AdminDashboard() {
                         {paymentDetails.map((payment, index) => (
                           <tr key={index}>
                             <td className={styles.boldText}>{payment.regNo}</td>
-                            <td className={styles.monoText}>{payment.payment_id}</td>
+                            <td className={styles.monoText}>
+                              {payment.feesBillPhoto ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <img 
+                                    src={getImageUrl(payment.feesBillPhoto)} 
+                                    alt="Bill"
+                                    className={styles.miniAvatar}
+                                    style={{ cursor: 'pointer', border: '1px solid #e2e8f0' }}
+                                    onClick={() => openImageModal(payment.feesBillPhoto, 'Payment Receipt')}
+                                    onError={(e) => { e.target.src = '/placeholder-pdf.png'; }}
+                                  />
+                                  <span>{payment.payment_id}</span>
+                                </div>
+                              ) : (
+                                payment.payment_id
+                              )}
+                            </td>
                             <td className={styles.boldText}>₹{payment.fee_amount || payment.payment_amount || 'N/A'}</td>
                             <td>{new Date(payment.payment_date).toLocaleString()}</td>
                             <td>

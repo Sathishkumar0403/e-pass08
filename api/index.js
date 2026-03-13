@@ -268,7 +268,7 @@ app.put('/api/admin/applications/:id', async (req, res) => {
 app.get('/api/admin/payment-details', async (req, res) => {
   try {
     const apps = await req.applications.find({ 
-      payment_status: { $in: ['paid', 'verified', 'processing'] } 
+      payment_status: { $in: ['paid', 'verified', 'processing', 'offline', 'waived'] } 
     }).sort({ updatedAt: -1, payment_date: -1 }).toArray();
     res.json(apps.map(a => ({ ...a, id: a._id.toString(), regNo: a.regNo || a.reg_no })));
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -871,17 +871,24 @@ app.post('/api/student/upload-fees-bill', upload.single('feesBill'), async (req,
       if (bestFee) feeAmount = bestFee.fee_amount;
     }
 
+    const updateData = { 
+      feesBillPhoto: fileData, 
+      updatedAt: new Date().toISOString() 
+    };
+
+    // If not already verified or wavered/offline, set as 'paid' for admin review
+    const currentStatus = student.payment_status;
+    if (!['verified', 'offline', 'waived', 'paid'].includes(currentStatus)) {
+      updateData.payment_status = 'paid';
+      updateData.payment_id = 'MANUAL-DOC';
+      updateData.payment_date = new Date().toISOString();
+      updateData.fee_amount = feeAmount || 0;
+    }
+
     await req.applications.updateOne(
       { $or: [{ regNo }, { reg_no: regNo }] }, 
-      { $set: { 
-          feesBillPhoto: fileData, 
-          payment_status: 'paid', 
-          payment_id: 'MANUAL-DOC',
-          payment_date: new Date().toISOString(),
-          fee_amount: feeAmount || 0,
-          updatedAt: new Date().toISOString() 
-        } 
-      });
+      { $set: updateData }
+    );
     res.json({ message: 'Bill uploaded successfully', path: fileData });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
