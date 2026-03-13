@@ -198,6 +198,7 @@
   border-radius: 14px;
   padding-left: 3.25rem;
   font-weight: 500;
+  color: #0f172a;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
@@ -222,6 +223,7 @@
   border-radius: 14px;
   padding-left: 3.25rem;
   font-weight: 600;
+  color: #0f172a;
   appearance: none;
 }
 

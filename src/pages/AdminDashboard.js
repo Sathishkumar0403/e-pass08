@@ -25,7 +25,8 @@ import {
   FaUserGraduate,
   FaBullhorn,
   FaShieldAlt,
-  FaBars
+  FaBars,
+  FaUniversity
 } from 'react-icons/fa';
 import {
   getApplications,
@@ -94,6 +95,7 @@ function AdminDashboard() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [collegeFilter, setCollegeFilter] = useState('all');
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [activeTab, setActiveTab] = useState('applications'); // 'applications', 'fees', 'buses', 'notifications', 'settings'
   const [routeFees, setRouteFees] = useState([]);
@@ -235,6 +237,9 @@ function AdminDashboard() {
     if (statusFilter !== 'all') {
       filtered = filtered.filter(app => app.status === statusFilter);
     }
+    if (collegeFilter !== 'all') {
+      filtered = filtered.filter(app => app.college === collegeFilter);
+    }
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
       filtered = filtered.filter(app =>
@@ -243,7 +248,7 @@ function AdminDashboard() {
       );
     }
     setFilteredApplications(filtered);
-  }, [applications, statusFilter, searchTerm]);
+  }, [applications, statusFilter, collegeFilter, searchTerm]);
 
   const handleApprove = async (id) => {
     try {
@@ -779,6 +784,15 @@ function AdminDashboard() {
                       <option value="pending">Pending</option>
                       <option value="approved">Approved</option>
                       <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                  <div className={styles.filterBox}>
+                    <FaUniversity />
+                    <select value={collegeFilter} onChange={(e) => setCollegeFilter(e.target.value)}>
+                      <option value="all">All Colleges</option>
+                      {colleges.map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
