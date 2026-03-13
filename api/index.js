@@ -340,7 +340,7 @@ app.post('/api/admin/mark-payment', async (req, res) => {
     }
 
     await req.applications.updateOne({ _id: new ObjectId(id) }, { $set: update });
-    res.json({ message: `Payment marked as ${payment_type} and application approved.` });
+    res.json({ message: `Administrative record updated: Payment marked as ${payment_type} and application authorized.` });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

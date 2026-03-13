@@ -384,11 +384,11 @@ function StudentDashboard() {
                           : studentData.status === 'rejected'
                             ? 'Application Rejected'
                             : (() => {
-                                const ps = paymentStatus.payment_status || studentData.payment_status;
-                                if (ps === 'paid') return 'Payment Verification Pending';
-                                if (ps === 'offline') return 'Offline Payment Recorded';
-                                if (ps === 'waived') return 'Fee Waived by Admin';
-                                return 'Application Under Review';
+                                 const ps = paymentStatus.payment_status || studentData.payment_status;
+                                 if (ps === 'paid') return 'Online Payment (Under Review)';
+                                 if (ps === 'offline') return 'Verified Offline Payment';
+                                 if (ps === 'waived') return 'Institutional Exemption Granted';
+                                 return 'Application Under Review';
                               })()}
                       </h4>
                       <p className={styles.statusDesc}>
@@ -397,11 +397,11 @@ function StudentDashboard() {
                           : studentData.status === 'rejected'
                             ? `Your application was not approved. ${studentData.rejection_reason ? `Reason: ${studentData.rejection_reason}` : ''}`
                             : (() => {
-                                const ps = paymentStatus.payment_status || studentData.payment_status;
-                                if (ps === 'paid') return 'Your payment is being verified by the admin. Your pass will be generated shortly.';
-                                if (ps === 'offline') return 'Your offline payment has been recorded by admin. Your pass is being processed.';
-                                if (ps === 'waived') return 'Your fee has been waived by the admin. Your pass is being processed.';
-                                return 'Your pass will be active once admin approves and payment is complete.';
+                                 const ps = paymentStatus.payment_status || studentData.payment_status;
+                                 if (ps === 'paid') return 'Your online payment is being verified. Your pass will be authorized once complete.';
+                                 if (ps === 'offline') return 'Your manual/offline payment has been verified. Your digital pass is now active.';
+                                 if (ps === 'waived') return 'You have been granted an institutional fee exemption. Your digital pass is now active.';
+                                 return 'Your pass will be active once administrative approval and fee processing are complete.';
                               })()}
                       </p>
 
@@ -415,7 +415,7 @@ function StudentDashboard() {
                           const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
                           const note = paymentStatus.payment_note;
                           const isDone = ['paid','verified','offline','waived'].includes(ps);
-                          const label = ps === 'verified' ? 'Online (Verified)' : ps === 'offline' ? 'Offline Paid' : ps === 'waived' ? 'Fee Waived' : ps === 'paid' ? 'Paid (Pending verify)' : 'Unpaid';
+                           const label = ps === 'verified' ? 'Verified Online' : ps === 'offline' ? 'Verified Offline' : ps === 'waived' ? 'Institutional Exemption' : ps === 'paid' ? 'Paid (Processing)' : 'Waiting for Fee Clearing';
                           return (
                             <div className={`${styles.checkRow} ${isDone ? styles.done : styles.pending}`}>
                               {isDone ? <FaCheckCircle /> : <FaSpinner className={styles.spin} />}
@@ -488,12 +488,12 @@ function StudentDashboard() {
                       <span className={styles.desc}>
                         {(() => {
                           const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
-                          if (ps === 'offline') return 'Marked as Offline Payment';
-                          if (ps === 'waived') return 'Fee Waived by Admin';
-                          if (ps === 'verified' || ps === 'paid') return `ID: ${paymentStatus.payment_id || 'Online Payment'}`;
-                          
-                          const amt = routeFee?.fee_amount || studentData?.fee_amount;
-                          return (ps === 'offline' || ps === 'waived') ? 'Process offline' : (amt ? `₹${amt} · Secure online payment` : 'Secure online payment');
+                           if (ps === 'offline') return 'Verified via Manual Administration';
+                           if (ps === 'waived') return 'Institutional Exemption Authorized';
+                           if (ps === 'verified' || ps === 'paid') return `Reference: ${paymentStatus.payment_id || 'Digital Payment'}`;
+                           
+                           const amt = routeFee?.fee_amount || studentData?.fee_amount;
+                           return (ps === 'offline' || ps === 'waived') ? 'Administrative clearance' : (amt ? `₹${amt} · Secure Online Transaction` : 'Secure Online Transaction');
                         })()}
                       </span>
                     </div>

@@ -916,8 +916,8 @@ function AdminDashboard() {
                                     '#64748b'
                                 }}>
                                   {app.payment_status === 'verified' ? '✅ Verified' :
-                                   app.payment_status === 'offline'  ? '🏦 Offline' :
-                                   app.payment_status === 'waived'   ? '🎟 Waived' :
+                                   app.payment_status === 'offline'  ? '🏦 Offline Paid' :
+                                   app.payment_status === 'waived'   ? '🎓 Inst. Exemption' :
                                    app.payment_status === 'paid'     ? '⏳ Pending Verify' :
                                    '⬜ Unpaid'}
                                 </span>
@@ -933,18 +933,18 @@ function AdminDashboard() {
                                           borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
                                           background: '#dbeafe', color: '#1d4ed8'
                                         }}
-                                      >🏦 Offline</button>
+                                      >🏦 Offline Paid</button>
                                     )}
                                     {app.payment_status !== 'waived' && (
                                       <button
-                                        title="Waive / Approve without payment"
+                                        title="Grant Institutional / Scholarship Exemption"
                                         onClick={() => handleMarkPayment(app.id, 'waived')}
                                         style={{
                                           fontSize: '0.65rem', padding: '3px 7px', border: 'none',
                                           borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
                                           background: '#f3e8ff', color: '#7c3aed'
                                         }}
-                                      >🎟 Waive</button>
+                                      >🎓 Exemption</button>
                                     )}
                                     {(app.payment_status === 'offline' || app.payment_status === 'waived') && (
                                       <button
