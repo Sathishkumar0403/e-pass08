@@ -1,8 +1,8 @@
 .pageWrapper {
   min-height: 100vh;
-  padding: 80px 1rem 4rem; /* Match navbar height */
+  padding: 100px 1rem 4rem; /* More space for navbar */
   background-color: #f8fafc;
-  background-image: linear-gradient(rgba(248, 250, 252, 0.7), rgba(248, 250, 252, 0.7)), url('../assets/college-bg.jpg');
+  background-image: linear-gradient(rgba(248, 250, 252, 0.8), rgba(248, 250, 252, 0.8)), url('../assets/college-bg.jpg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -391,7 +391,7 @@
 .actionText .label {
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #0f172a !important; /* Force high contrast */
   text-transform: none;
   letter-spacing: normal;
   padding: 0;
@@ -400,7 +400,7 @@
 
 .actionText .desc {
   font-size: 0.8125rem;
-  color: #2563eb;
+  color: #2563eb !important; /* Force distinct blue color */
   font-weight: 700;
 }
 

@@ -1306,18 +1306,26 @@ a:hover {
   border-collapse: collapse;
 }
 
-/* Remove default button borders */
+/* Remove default button borders and ensure visible text */
 button {
   border: none;
   background: none;
+  color: inherit;
 }
 
-/* Remove default input borders */
+/* Remove default input borders and ensure dark text for contrast */
 input,
 textarea,
 select {
   border: none;
   outline: none;
+  color: var(--gray-900) !important; /* Force high contrast text */
+}
+
+/* Explicitly style select options for browser consistency */
+select option {
+  color: #000000 !important;
+  background-color: #ffffff !important;
 }
 
 /* Clean table borders */
@@ -1368,21 +1376,5 @@ pre {
 
   100% {
     left: 100%;
-  }
-}
-
-/* Dark mode support (for future implementation) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --gray-50: #0f172a;
-    --gray-100: #1e293b;
-    --gray-200: #334155;
-    --gray-300: #475569;
-    --gray-400: #64748b;
-    --gray-500: #94a3b8;
-    --gray-600: #cbd5e1;
-    --gray-700: #e2e8f0;
-    --gray-800: #f1f5f9;
-    --gray-900: #f8fafc;
   }
 }

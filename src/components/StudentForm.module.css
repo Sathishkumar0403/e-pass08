@@ -87,20 +87,22 @@
 .select,
 .textarea {
   width: 100%;
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
+  background: white; /* Force white background for consistency */
+  border: 1.5px solid #cbd5e1; /* Slightly darker border */
   border-radius: 12px;
   padding: 0.875rem 1.25rem 0.875rem 3.5rem;
-  font-size: 0.9375rem;
-  color: #0f172a;
+  font-size: 1rem;
+  color: #000000 !important; /* Force black text */
   transition: all 0.2s ease;
   font-family: inherit;
+  font-weight: 600;
 }
 
 .input::placeholder,
 .textarea::placeholder {
   color: #64748b;
   font-weight: 500;
+  opacity: 0.8;
 }
 
 .textarea {
