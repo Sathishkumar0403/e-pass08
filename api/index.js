@@ -537,11 +537,24 @@ app.get('/api/admin/export-excel', async (req, res) => {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Applications');
     ws.columns = [
-      { header: 'Reg No', key: 'regNo' }, { header: 'Name', key: 'name' },
-      { header: 'Route', key: 'route' }, { header: 'Status', key: 'status' },
-      { header: 'Payment', key: 'payment_status' }, { header: 'Date', key: 'createdAt' }
+      { header: 'Reg No', key: 'regNo', width: 15 },
+      { header: 'Name', key: 'name', width: 20 },
+      { header: 'College', key: 'college', width: 30 },
+      { header: 'Branch/Year', key: 'branchYear', width: 15 },
+      { header: 'Route', key: 'route', width: 25 },
+      { header: 'Status', key: 'status', width: 15 },
+      { header: 'Payment Status', key: 'payment_status', width: 20 },
+      { header: 'Transaction ID', key: 'payment_id', width: 20 },
+      { header: 'Fee Amount', key: 'fee_amount', width: 15 },
+      { header: 'Authorized Date', key: 'createdAt', width: 20 }
     ];
-    apps.forEach(a => ws.addRow({ ...a, regNo: a.regNo || a.reg_no, createdAt: a.createdAt || a.created_at }));
+    apps.forEach(a => ws.addRow({ 
+      ...a, 
+      regNo: a.regNo || a.reg_no, 
+      payment_id: a.payment_id || 'N/A',
+      fee_amount: a.fee_amount || 0,
+      createdAt: a.createdAt || a.created_at || 'N/A' 
+    }));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=applications.xlsx');
     await wb.xlsx.write(res);

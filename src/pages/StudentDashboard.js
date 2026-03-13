@@ -122,6 +122,9 @@ function StudentDashboard() {
 
   useEffect(() => {
     checkStatus();
+    // Add interval to poll status every 10 seconds if pass not yet ready
+    const interval = setInterval(checkStatus, 10000);
+    return () => clearInterval(interval);
   }, [checkStatus]);
 
   const handleSubmit = async (e) => {
@@ -136,6 +139,7 @@ function StudentDashboard() {
       } else {
         const student = response.student || response;
         setStudentData(student);
+        localStorage.setItem('studentRef', JSON.stringify(student));
         setError('');
       }
     } catch (err) {
@@ -406,15 +410,22 @@ function StudentDashboard() {
                       </p>
 
                       <div className={styles.checkRows}>
+                        {/* Status refresh indicator */}
+                        {isLoading && <div className={styles.refreshing}><FaSpinner className={styles.spin} /> Syncing...</div>}
+                        
                         <div className={`${styles.checkRow} ${(studentData.status === 'approved' || studentData.status === 'cancelled') ? styles.done : studentData.status === 'rejected' ? styles.error : styles.pending}`}>
                           {(studentData.status === 'approved' || studentData.status === 'cancelled') ? <FaCheckCircle /> : studentData.status === 'rejected' ? <FaTimesCircle /> : <FaSpinner className={styles.spin} />}
                           <span>Admin Approval ({studentData.status})</span>
                         </div>
                         {/* Payment row — shows label based on type */}
                         {(() => {
-                          const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
-                          const note = paymentStatus.payment_note;
-                          const isDone = ['paid','verified','offline','waived'].includes(ps);
+                           // Aggressively check both paymentStatus state AND studentData for status
+                           let ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
+                           // Final database fallback
+                           if (ps === 'unpaid' && studentData?.payment_status && studentData.payment_status !== 'unpaid') ps = studentData.payment_status;
+                           
+                           const note = paymentStatus.payment_note;
+                           const isDone = ['paid','verified','offline','waived'].includes(ps);
                            const label = ps === 'verified' ? 'Verified Online' : ps === 'offline' ? 'Verified Offline' : ps === 'waived' ? 'Institutional Exemption' : ps === 'paid' ? 'Paid (Processing)' : 'Waiting for Fee Clearing';
                           return (
                             <div className={`${styles.checkRow} ${isDone ? styles.done : styles.pending}`}>
