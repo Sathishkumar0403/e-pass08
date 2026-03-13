@@ -42,7 +42,7 @@ function StudentDashboard() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [paymentStatus, setPaymentStatus] = useState({
-    payment_status: 'pending',
+    payment_status: studentData?.payment_status || 'unpaid',
     payment_id: null,
     payment_amount: null,
     payment_date: null
@@ -367,7 +367,8 @@ function StudentDashboard() {
 
                 <div className={styles.passVisual}>
                   {(() => {
-                    const ps = paymentStatus.payment_status || studentData.payment_status;
+                    const getSafePS = () => (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
+                    const ps = getSafePS();
                     const paymentOk = ps === 'verified' || ps === 'offline' || ps === 'waived';
                     const passReady = studentData.status === 'approved' && paymentOk && !cancellationStatus.isCancelled;
                     return passReady ? (
@@ -411,7 +412,7 @@ function StudentDashboard() {
                         </div>
                         {/* Payment row — shows label based on type */}
                         {(() => {
-                          const ps = paymentStatus.payment_status || studentData.payment_status;
+                          const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
                           const note = paymentStatus.payment_note;
                           const isDone = ['paid','verified','offline','waived'].includes(ps);
                           const label = ps === 'verified' ? 'Online (Verified)' : ps === 'offline' ? 'Offline Paid' : ps === 'waived' ? 'Fee Waived' : ps === 'paid' ? 'Paid (Pending verify)' : 'Unpaid';
@@ -470,7 +471,7 @@ function StudentDashboard() {
                       return isDone ? '' : styles.actionActive;
                     })()}`}
                     disabled={(() => {
-                      const ps = paymentStatus.payment_status || studentData.payment_status;
+                      const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
                       return ['paid', 'verified', 'offline', 'waived'].includes(ps);
                     })()}
                   >
@@ -478,7 +479,7 @@ function StudentDashboard() {
                     <div className={styles.actionText}>
                       <span className={styles.label}>
                         {(() => {
-                          const ps = paymentStatus.payment_status || studentData.payment_status;
+                          const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
                           if (ps === 'verified' || ps === 'offline' || ps === 'waived') return 'Fees Cleared ✓';
                           if (ps === 'paid') return 'Payment Pending Verify';
                           return 'Pay Pass Fees';
@@ -486,7 +487,7 @@ function StudentDashboard() {
                       </span>
                       <span className={styles.desc}>
                         {(() => {
-                          const ps = paymentStatus.payment_status || studentData.payment_status;
+                          const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
                           if (ps === 'offline') return 'Marked as Offline Payment';
                           if (ps === 'waived') return 'Fee Waived by Admin';
                           if (ps === 'verified' || ps === 'paid') return `ID: ${paymentStatus.payment_id || 'Online Payment'}`;
