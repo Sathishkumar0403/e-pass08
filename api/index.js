@@ -197,37 +197,43 @@ app.get('/api/admin/applications', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+const generatePassData = async (req, appRecord, countOffset = 1) => {
+  const currentYear = new Date().getFullYear();
+  const count = await req.applications.countDocuments({ passNumber: { $ne: null } });
+  const passNumber = appRecord.passNumber || `PASS-${currentYear}-${String(count + countOffset).padStart(4, '0')}`;
+  
+  const qrData = JSON.stringify({
+    name: appRecord.name,
+    regNo: appRecord.regNo || appRecord.reg_no,
+    route: appRecord.route,
+    passNumber,
+    approvedAt: new Date().toISOString()
+  });
+
+  return { passNumber, qrData };
+};
+
 app.post('/api/admin/approve', async (req, res) => {
   try {
     const { id } = req.body;
     const appRecord = await req.applications.findOne({ _id: new ObjectId(id) });
     if (!appRecord) return res.status(404).json({ error: 'Application not found' });
 
-    // Pass Generation Logic
-    const currentYear = new Date().getFullYear();
-    const count = await req.applications.countDocuments({ passNumber: { $ne: null } });
-    const passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
-    
-    // Basic QR data for frontend
-    const qrData = JSON.stringify({
-      name: appRecord.name,
-      regNo: appRecord.regNo || appRecord.reg_no,
-      route: appRecord.route,
-      passNumber,
-      approvedAt: new Date().toISOString()
-    });
+    const update = { 
+      status: 'approved', 
+      updatedAt: new Date().toISOString() 
+    };
 
-    await req.applications.updateOne(
-      { _id: new ObjectId(id) }, 
-      { $set: { 
-          status: 'approved', 
-          passNumber, 
-          qrData, 
-          updatedAt: new Date().toISOString() 
-        } 
-      }
-    );
-    res.json({ message: 'Approved successfully', passNumber });
+    // If payment is already offline or waived, generate pass immediately
+    if (appRecord.payment_status === 'offline' || appRecord.payment_status === 'waived' || appRecord.payment_status === 'verified') {
+      const { passNumber, qrData } = await generatePassData(req, appRecord);
+      update.passNumber = passNumber;
+      update.qrData = qrData;
+      update.pass_approved = true;
+    }
+
+    await req.applications.updateOne({ _id: new ObjectId(id) }, { $set: update });
+    res.json({ message: 'Approved successfully', passNumber: update.passNumber });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -274,19 +280,7 @@ app.post('/api/admin/approve-payment-pass', async (req, res) => {
     const appRecord = await req.applications.findOne({ _id: new ObjectId(id) });
     if (!appRecord) return res.status(404).json({ error: 'Application not found' });
 
-    // Pass Generation Logic
-    const currentYear = new Date().getFullYear();
-    const count = await req.applications.countDocuments({ passNumber: { $ne: null } });
-    const passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
-
-    // QR data for the pass
-    const qrData = JSON.stringify({
-      name: appRecord.name,
-      regNo: appRecord.regNo || appRecord.reg_no,
-      route: appRecord.route,
-      passNumber,
-      approvedAt: new Date().toISOString()
-    });
+    const { passNumber, qrData } = await generatePassData(req, appRecord);
 
     await req.applications.updateOne(
       { _id: new ObjectId(id) }, 
@@ -332,26 +326,22 @@ app.post('/api/admin/mark-payment', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    // Auto-generate pass if application is already approved and payment is now confirmed
-    if (appRecord.status === 'approved' && (payment_type === 'offline' || payment_type === 'waived')) {
-      const currentYear = new Date().getFullYear();
-      const count = await req.applications.countDocuments({ passNumber: { $ne: null } });
-      const passNumber = appRecord.passNumber || `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
-      const qrData = JSON.stringify({
-        name: appRecord.name,
-        regNo: appRecord.regNo || appRecord.reg_no,
-        route: appRecord.route,
-        passNumber,
-        paymentType: payment_type,
-        approvedAt: new Date().toISOString()
-      });
+    // Auto-generate pass and approve if payment is offline/waived
+    if (payment_type === 'offline' || payment_type === 'waived') {
+      const { passNumber, qrData } = await generatePassData(req, appRecord);
       update.passNumber = passNumber;
       update.qrData = qrData;
       update.pass_approved = true;
+      update.status = 'approved';
+    } else if (payment_type === 'unpaid') {
+      // Clear pass if reset to unpaid
+      update.passNumber = null;
+      update.qrData = null;
+      update.pass_approved = false;
     }
 
     await req.applications.updateOne({ _id: new ObjectId(id) }, { $set: update });
-    res.json({ message: `Payment marked as ${payment_type}` });
+    res.json({ message: `Payment marked as ${payment_type} and application approved` });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

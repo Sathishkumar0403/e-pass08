@@ -464,44 +464,71 @@ function StudentDashboard() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowPaymentModal(true)}
-                    className={`${styles.actionBtn} ${(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified') ? '' : styles.actionActive}`}
-                    disabled={paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified'}
+                    className={`${styles.actionBtn} ${(() => {
+                      const ps = paymentStatus.payment_status || studentData.payment_status;
+                      const isDone = ['paid', 'verified', 'offline', 'waived'].includes(ps);
+                      return isDone ? '' : styles.actionActive;
+                    })()}`}
+                    disabled={(() => {
+                      const ps = paymentStatus.payment_status || studentData.payment_status;
+                      return ['paid', 'verified', 'offline', 'waived'].includes(ps);
+                    })()}
                   >
                     <div className={styles.actionIcon}><FaCreditCard /></div>
                     <div className={styles.actionText}>
                       <span className={styles.label}>
-                        {(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified') ? 'Fees Paid ✓' : 'Pay Pass Fees'}
+                        {(() => {
+                          const ps = paymentStatus.payment_status || studentData.payment_status;
+                          if (ps === 'verified' || ps === 'offline' || ps === 'waived') return 'Fees Cleared ✓';
+                          if (ps === 'paid') return 'Payment Pending Verify';
+                          return 'Pay Pass Fees';
+                        })()}
                       </span>
                       <span className={styles.desc}>
-                        {(paymentStatus.payment_status === 'paid' || paymentStatus.payment_status === 'verified' || studentData.payment_status === 'verified')
-                          ? `Payment ID: ${paymentStatus.payment_id || 'Verified'}`
-                          : (routeFee?.fee_amount || studentData?.fee_amount)
-                            ? `₹${routeFee?.fee_amount || studentData?.fee_amount} · Secure online payment`
-                            : 'Secure online payment'}
+                        {(() => {
+                          const ps = paymentStatus.payment_status || studentData.payment_status;
+                          if (ps === 'offline') return 'Marked as Offline Payment';
+                          if (ps === 'waived') return 'Fee Waived by Admin';
+                          if (ps === 'verified' || ps === 'paid') return `ID: ${paymentStatus.payment_id || 'Online Payment'}`;
+                          
+                          const amt = routeFee?.fee_amount || studentData?.fee_amount;
+                          return amt ? `₹${amt} · Secure online payment` : 'Secure online payment';
+                        })()}
                       </span>
                     </div>
                   </motion.button>
 
-                  <div className={styles.uploadCard}>
-                    <div className={styles.uploadBody}>
-                      <div className={styles.uploadInfo}>
-                        <FaUpload className={styles.uploadIcon} />
-                        <div>
-                          <span className={styles.uploadLabel}>Payment Document</span>
-                          <span className={styles.uploadDesc}>{selectedFile ? selectedFile.name : 'Upload receipt if paid offline'}</span>
+                  {(() => {
+                    const ps = paymentStatus.payment_status || studentData.payment_status;
+                    if (ps === 'verified' || ps === 'waived') return null;
+                    
+                    return (
+                      <div className={styles.uploadCard}>
+                        <div className={styles.uploadBody}>
+                          <div className={styles.uploadInfo}>
+                            <FaUpload className={styles.uploadIcon} />
+                            <div>
+                              <span className={styles.uploadLabel}>
+                                {ps === 'offline' ? 'Offline Receipt' : 'Payment Document'}
+                              </span>
+                              <span className={styles.uploadDesc}>
+                                {selectedFile ? selectedFile.name : (ps === 'offline' ? 'Upload receipt for offline payment' : 'Upload receipt if paid offline')}
+                              </span>
+                            </div>
+                          </div>
+                          <div className={styles.uploadActions}>
+                            <label className={styles.customFileUpload}>
+                              Browse
+                              <input type="file" onChange={handleFileChange} />
+                            </label>
+                            {selectedFile && (
+                              <button onClick={handleFileUpload} className={styles.uploadSubmit}>Submit</button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className={styles.uploadActions}>
-                        <label className={styles.customFileUpload}>
-                          Browse
-                          <input type="file" onChange={handleFileChange} />
-                        </label>
-                        {selectedFile && (
-                          <button onClick={handleFileUpload} className={styles.uploadSubmit}>Submit</button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   <button
                     onClick={() => setShowTandC(true)}
