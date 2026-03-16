@@ -4,12 +4,13 @@
   align-items: center;
   justify-content: center;
   background-color: #f8fafc;
-  background-image: linear-gradient(rgba(248, 250, 252, 0.5), rgba(248, 250, 252, 0.5)), url('../assets/college-bg.jpg');
+  background-image: linear-gradient(rgba(248, 250, 252, 0.8), rgba(248, 250, 252, 0.8)), url('../assets/college-bg.jpg');
   background-size: cover;
   background-position: center;
+  background-attachment: fixed;
   position: relative;
-  overflow: hidden;
-  padding: 2rem;
+  overflow-x: hidden;
+  padding: 100px 1rem 4rem;
 }
 
 .bgGlow {
@@ -38,8 +39,12 @@
   padding: 2.5rem;
   border-radius: 32px;
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
-  max-height: calc(100vh - 4rem);
-  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.loginCard::-webkit-scrollbar {
+  display: none;
 }
 
 .titleArea {

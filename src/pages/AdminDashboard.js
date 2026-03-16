@@ -1353,7 +1353,7 @@ function AdminDashboard() {
                       </div>
                       
                       <div style={{ marginTop: '1.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem', width: '100%', overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse' }}>
                           <thead>
                             <tr style={{ textAlign: 'left', color: '#000000', fontSize: '0.75rem', textTransform: 'uppercase' }}>
                               <th style={{ padding: '0.8rem' }}>Username</th>

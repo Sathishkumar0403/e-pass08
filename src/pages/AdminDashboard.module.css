@@ -1199,6 +1199,10 @@
     transform: translateX(0);
   }
 
+  .sidebarHeader {
+    padding-top: 5rem; /* Space for the hamburger toggle button */
+  }
+
   .menuToggle {
     display: flex;
     position: fixed;
@@ -1355,14 +1359,17 @@
   /* Settings cards stack */
   .settingCard {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
+    align-items: stretch;
+    gap: 1.5rem;
   }
 
   .settingAction {
     flex-direction: row;
     align-items: center;
-    gap: 1rem;
+    justify-content: space-between;
+    width: 100%;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
   }
 
   /* Success and error banners */

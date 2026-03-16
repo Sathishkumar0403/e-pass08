@@ -104,32 +104,7 @@ function Home() {
             </div>
           </motion.div>
 
-          <motion.div
-            className={styles.heroVisual}
-            initial={{ opacity: 0, scale: 0.8, rotateY: 20 }}
-            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-            transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-          >
-            <div className={styles.heroCardContainer}>
-              <div className={styles.floatingCard}>
-                <div className={styles.cardHeader}>
-                  <FaBus className={styles.cardIcon} />
-                  <span>Student ID</span>
-                </div>
-                <div className={styles.cardBody}>
-                  <div className={styles.avatar}></div>
-                  <div className={styles.details}>
-                    <div className={styles.name}>student name</div>
-                    <div className={styles.id}>ID: #61766AC22UCS132</div>
-                  </div>
-                  <div className={styles.qrContainer}>
-                    <FaQrcode />
-                  </div>
-                </div>
-              </div>
-              <div className={styles.cardShadow}></div>
-            </div>
-          </motion.div>
+            {/* Removed floating card per request */}
         </div>
       </section>
 
