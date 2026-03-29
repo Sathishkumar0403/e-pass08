@@ -83,11 +83,6 @@ const containerVariants = {
   exit: { opacity: 0, y: -20, transition: { duration: 0.2 } }
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 }
-};
-
 function AdminDashboard() {
   const [applications, setApplications] = useState([]);
   const [error, setError] = useState('');
@@ -647,13 +642,6 @@ function AdminDashboard() {
     }
   };
 
-
-  const containerVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
-  };
-
-
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminUser');
@@ -1063,7 +1051,6 @@ function AdminDashboard() {
                     const enrolled = busSeatCounts[busNum] || 0;
                     const remaining = Math.max(0, CAPACITY - enrolled);
                     const pct = (enrolled / CAPACITY) * 100;
-                    const seatStatus = remaining === 0 ? 'full' : pct >= 80 ? 'nearFull' : 'available';
                     const seatColor = remaining === 0 ? '#ef4444' : pct >= 80 ? '#f97316' : '#22c55e';
                     const seatBg = remaining === 0 ? '#fef2f2' : pct >= 80 ? '#fff7ed' : '#f0fdf4';
                     return (

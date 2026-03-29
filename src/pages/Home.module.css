@@ -34,7 +34,7 @@
 
 /* Hero Section */
 .heroSection {
-  padding: 8rem 2rem 5rem;
+  padding: 10rem 2rem 6rem;
   max-width: 1400px;
   margin: 0 auto;
   position: relative;
@@ -97,12 +97,12 @@
 }
 
 .heroTitle {
-  font-size: 4.5rem;
+  font-size: 5rem;
   font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 1.5rem;
+  line-height: 1.05;
+  margin-bottom: 2rem;
   color: #0f172a;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
 }
 
 .titleGradient {
@@ -113,11 +113,11 @@
 }
 
 .heroDescription {
-  font-size: 1.25rem;
-  color: #334155;
-  margin-bottom: 3rem;
-  max-width: 600px;
-  line-height: 1.6;
+  font-size: 1.35rem;
+  color: #475569;
+  margin-bottom: 3.5rem;
+  max-width: 650px;
+  line-height: 1.7;
   font-weight: 500;
 }
 
@@ -253,7 +253,7 @@
 
 /* Features Section */
 .featuresSection {
-  padding: 5rem 2rem 8rem;
+  padding: 8rem 2rem 10rem;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -323,7 +323,7 @@
 
 /* Portals Section */
 .portalsSection {
-  padding: 5rem 2rem;
+  padding: 8rem 2rem;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -410,11 +410,11 @@
 
 /* Stats Section */
 .statsSection {
-  padding: 5rem 2rem;
+  padding: 8rem 2rem;
   background: #0f172a;
   color: white;
   margin: 0 2rem;
-  border-radius: 32px;
+  border-radius: 40px;
 }
 
 .statsGlass {
@@ -520,7 +520,8 @@
   }
 
   .heroTitle {
-    font-size: 3.5rem;
+    font-size: 3.75rem;
+    letter-spacing: -0.03em;
   }
 
   .heroButtons {

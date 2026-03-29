@@ -1,14 +1,14 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 3rem;
   width: 100%;
 }
 
 .card {
   background: white;
-  border-radius: 24px;
-  padding: 2.5rem;
+  border-radius: 28px;
+  padding: 3rem;
   border: 1px solid #f1f5f9;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02);
   transition: all 0.3s ease;
@@ -39,16 +39,17 @@
 }
 
 .cardTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.75rem;
+  font-weight: 800;
   color: #0f172a;
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .fieldGroup {
@@ -398,6 +399,14 @@
   }
 
   .card {
-    padding: 1.5rem;
+    padding: 2rem 1.5rem;
+  }
+
+  .grid {
+    gap: 1.5rem;
+  }
+
+  .form {
+    gap: 2rem;
   }
 }

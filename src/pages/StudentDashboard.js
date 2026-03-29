@@ -86,7 +86,7 @@ function StudentDashboard() {
         setPaymentStatus(paymentData);
       } catch (err) {
         setPaymentStatus({
-          payment_status: 'pending',
+          payment_status: 'unpaid',
           payment_id: null,
           payment_amount: null,
           payment_date: null
@@ -374,7 +374,7 @@ function StudentDashboard() {
                     // PRIMARY source: studentData direct from DB (refreshed every 10s)
                     // FALLBACK: paymentStatus state (separate API call)
                     const dbPS = studentData?.payment_status;
-                    const statePS = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') 
+                    const statePS = (paymentStatus.payment_status && !['pending', 'unpaid'].includes(paymentStatus.payment_status)) 
                       ? paymentStatus.payment_status 
                       : null;
                     // Use DB value if it's a cleared status, otherwise use state
@@ -429,7 +429,7 @@ function StudentDashboard() {
                         {(() => {
                            // Same consistent logic: DB is primary
                            const dbPS = studentData?.payment_status;
-                           const statePS = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending')
+                           const statePS = (paymentStatus.payment_status && !['pending', 'unpaid'].includes(paymentStatus.payment_status))
                              ? paymentStatus.payment_status : null;
                            const CLEARED = ['verified', 'offline', 'waived'];
                            let ps = CLEARED.includes(dbPS) ? dbPS : (statePS || dbPS || 'unpaid');
@@ -475,7 +475,7 @@ function StudentDashboard() {
                     disabled={(() => {
                       const dbPS = studentData?.payment_status;
                       const CLEARED = ['verified', 'offline', 'waived'];
-                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && !['pending', 'unpaid'].includes(paymentStatus.payment_status)) ? paymentStatus.payment_status : (dbPS || 'unpaid'));
                       const paymentOk = CLEARED.includes(ps) || studentData?.pass_approved === true;
                       return isDownloading || cancellationStatus.isCancelled || studentData.status !== 'approved' || !paymentOk;
                     })()}
@@ -494,14 +494,14 @@ function StudentDashboard() {
                     className={`${styles.actionBtn} ${(() => {
                       const dbPS = studentData?.payment_status;
                       const CLEARED = ['verified', 'offline', 'waived'];
-                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && !['pending', 'unpaid'].includes(paymentStatus.payment_status)) ? paymentStatus.payment_status : (dbPS || 'unpaid'));
                       const isDone = ['paid', 'verified', 'offline', 'waived'].includes(ps) || studentData?.pass_approved;
                       return isDone ? '' : styles.actionActive;
                     })()}`}
                     disabled={(() => {
                       const dbPS = studentData?.payment_status;
                       const CLEARED = ['verified', 'offline', 'waived'];
-                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                      const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && !['pending', 'unpaid'].includes(paymentStatus.payment_status)) ? paymentStatus.payment_status : (dbPS || 'unpaid'));
                       return ['paid', 'verified', 'offline', 'waived'].includes(ps) || studentData?.pass_approved === true;
                     })()}
                   >
@@ -511,7 +511,7 @@ function StudentDashboard() {
                         {(() => {
                            const dbPS = studentData?.payment_status;
                            const CLEARED = ['verified', 'offline', 'waived'];
-                           const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                           const ps = CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && !['pending', 'unpaid'].includes(paymentStatus.payment_status)) ? paymentStatus.payment_status : (dbPS || 'unpaid'));
                            if (CLEARED.includes(ps) || studentData?.pass_approved) return 'Fees Cleared ✓';
                            if (ps === 'paid') return 'Payment Pending Verify';
                            return 'Pay Pass Fees';
@@ -519,7 +519,7 @@ function StudentDashboard() {
                       </span>
                       <span className={styles.desc}>
                         {(() => {
-                          const ps = (paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
+                          const ps = (paymentStatus.payment_status && !['pending', 'unpaid'].includes(paymentStatus.payment_status)) ? paymentStatus.payment_status : (studentData?.payment_status || 'unpaid');
                            if (ps === 'offline') return 'Verified via Manual Administration';
                            if (ps === 'waived') return 'Institutional Exemption Authorized';
                            if (ps === 'verified' || ps === 'paid') return `Reference: ${paymentStatus.payment_id || 'Digital Payment'}`;
@@ -535,7 +535,7 @@ function StudentDashboard() {
                     const ps2 = (() => {
                       const dbPS = studentData?.payment_status;
                       const CLEARED = ['verified', 'offline', 'waived'];
-                      return CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && paymentStatus.payment_status !== 'pending') ? paymentStatus.payment_status : (dbPS || 'unpaid'));
+                      return CLEARED.includes(dbPS) ? dbPS : ((paymentStatus.payment_status && !['pending', 'unpaid'].includes(paymentStatus.payment_status)) ? paymentStatus.payment_status : (dbPS || 'unpaid'));
                     })();
                     if (ps2 === 'verified' || ps2 === 'waived' || studentData?.pass_approved) return null;
                     

@@ -96,20 +96,6 @@ export async function getStudentStatus(regNo) {
   return apiCall(`/student/status/${regNo}`);
 }
 
-export async function processPayment(paymentData) {
-  return apiCall(`/student/pay`, {
-    method: "POST",
-    body: JSON.stringify(paymentData),
-  });
-}
-
-export async function createRazorpayOrder(amount, regNo) {
-  return apiCall('/student/create-order', {
-    method: 'POST',
-    body: JSON.stringify({ amount, regNo }),
-  });
-}
-
 export async function createPaymentOrder(regNo, amount) {
   return apiCall('/student/create-payment-order', {
     method: 'POST',
@@ -230,9 +216,7 @@ export async function getPaymentDetails() {
 }
 
 export async function exportPaymentsToExcel() {
-  // Use window.location for file downloads
-  const url = `${API_BASE_URL}/admin/export-excel`;
-  window.location.href = url;
+  window.location.href = `${API_BASE_URL}/admin/export-payments-excel`;
 }
 
 export async function processCancellationRequest(id, action) {

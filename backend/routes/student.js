@@ -7,6 +7,19 @@ const crypto = require("crypto");
 
 const router = express.Router();
 
+/** Public-safe student shape (matches login response) for status polling. */
+function toSafeStudent(student) {
+  if (!student) return null;
+  const { aadharNumber, aadharPhoto, collegeIdPhoto, ...safe } = student;
+  safe.validTill = student.validity;
+  if (student.branchYear) {
+    const parts = student.branchYear.split(/[-\/\s]+/);
+    safe.year = parts.length >= 2 ? parts[parts.length - 1] : '';
+    safe.branch = parts.length >= 2 ? parts.slice(0, -1).join(' ') : student.branchYear;
+  }
+  return safe;
+}
+
 // Helper to get Razorpay instance
 function getRazorpayInstance() {
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -240,7 +253,7 @@ router.post("/apply", upload.fields([
       updatedAt: now.toISOString(),
       cancellation_requested: 0,
       cancelled: 0,
-      payment_status: 'pending'
+      payment_status: 'unpaid'
     };
 
     const result = await collection.insertOne(application);
@@ -259,22 +272,24 @@ router.post("/login", async (req, res) => {
     const student = await req.mongo.collection("student_applications").findOne({ regNo, dob });
     if (!student) return res.status(404).json({ error: "Student not found" });
 
-    const { aadharNumber, aadharPhoto, collegeIdPhoto, ...safeStudent } = student;
-    safeStudent.validTill = student.validity;
-
-
-
-    // Split branchYear
-    if (student.branchYear) {
-      const parts = student.branchYear.split(/[-\/\s]+/);
-      safeStudent.year = parts.length >= 2 ? parts[parts.length - 1] : '';
-      safeStudent.branch = parts.length >= 2 ? parts.slice(0, -1).join(' ') : student.branchYear;
-    }
-
-    res.json(safeStudent);
+    res.json(toSafeStudent(student));
   } catch (err) {
     console.error("Login Error:", err);
     res.status(500).json({ error: "Login failed" });
+  }
+});
+
+/** Full student snapshot for dashboard refresh (same fields as login, no secrets). */
+router.get("/status/:regNo", async (req, res) => {
+  try {
+    const { regNo } = req.params;
+    if (!regNo) return res.status(400).json({ error: "Registration number is required" });
+    const student = await req.mongo.collection("student_applications").findOne({ regNo });
+    if (!student) return res.status(404).json({ error: "Student not found" });
+    res.json(toSafeStudent(student));
+  } catch (err) {
+    console.error("status:", err);
+    res.status(500).json({ error: "Failed to fetch status" });
   }
 });
 
@@ -442,8 +457,6 @@ router.post('/create-payment-order', async (req, res) => {
 });
 
 router.post('/verify-payment', async (req, res) => {
-
-
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, regNo } = req.body;
     
@@ -481,7 +494,7 @@ router.get('/payment-status/:regNo', async (req, res) => {
     if (!student) return res.status(404).json({ error: "Student not found" });
 
     res.json({
-      payment_status: student.payment_status || 'pending',
+      payment_status: student.payment_status || 'unpaid',
       payment_id: student.payment_id || null,
       payment_amount: student.fee_amount || null,
       payment_date: student.payment_date || null

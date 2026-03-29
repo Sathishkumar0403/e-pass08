@@ -16,6 +16,7 @@ const { connectDB } = require('./db.js');
 const studentRoutes = require('./routes/student.js');
 const adminRoutes = require('./routes/admin.js');
 const notificationRoutes = require('./routes/notifications.js');
+const publicRoutes = require('./routes/public.js');
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use(async (req, res, next) => {
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/public', publicRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {

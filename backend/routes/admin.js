@@ -8,6 +8,37 @@ const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
+/** Accepts token returned by hardcoded admin login or legacy alias. */
+function isAdminServiceToken(token) {
+  return token === 'admin-token' || token === 'admin-hardcoded-token';
+}
+
+/** Shared pass/QR payload for approval and offline/waived marking. */
+async function buildPassIssueFields(req, app) {
+  const collection = req.mongo.collection('student_applications');
+  let passNumber = app.passNumber;
+  let busNumber = app.busNumber;
+  if (!passNumber) {
+    const currentYear = new Date().getFullYear();
+    const count = await collection.countDocuments({ passNumber: { $ne: null } });
+    passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+    const busRecord = await req.mongo.collection('bus_routes').findOne({ route: app.route, is_active: 1 });
+    busNumber = app.busNumber || (busRecord ? busRecord.bus_number : 'PENDING');
+  }
+  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+  const qrData = JSON.stringify({
+    name: app.name,
+    regNo: app.regNo,
+    route: app.route,
+    validity: app.validity,
+    passNumber,
+    busNumber,
+    approvedAt: new Date().toISOString(),
+    passUrl: `${baseUrl}/pass/${app.regNo}`
+  });
+  return { passNumber, busNumber, qrData };
+}
+
 // Admin/Staff login route
 router.post('/login', async (req, res) => {
   try {
@@ -21,7 +52,7 @@ router.post('/login', async (req, res) => {
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       return res.json({
         message: 'Login successful',
-        token: 'admin-hardcoded-token',
+        token: 'admin-token',
         user: { id: 0, username: ADMIN_USERNAME, role: 'admin', name: 'System Administrator' }
       });
     }
@@ -256,6 +287,42 @@ router.post('/process-cancellation/:id', async (req, res) => {
   }
 });
 
+/** Multi-stage cancellation approvals (HOD → Admin → Principal), used by AdminDashboard. */
+['hod-approve', 'hod-decline', 'principal-approve', 'principal-decline', 'admin-approve', 'admin-decline'].forEach((action) => {
+  router.post(`/${action}-cancellation`, async (req, res) => {
+    try {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: 'ID is required' });
+      const isApprove = action.includes('approve');
+      const stage = action.split('-')[0];
+      const update = {
+        [`${stage}_approval`]: isApprove ? 'approved' : 'declined',
+        updatedAt: new Date().toISOString()
+      };
+      if (action === 'admin-approve' && isApprove) {
+        update.admin_approval = 'approved';
+      }
+      if (action === 'principal-approve' && isApprove) {
+        update.status = 'cancelled';
+        update.cancelled = 1;
+        update.cancellation_requested = 0;
+        update.cancelled_at = new Date().toISOString();
+      }
+      if (!isApprove) {
+        update.cancellation_requested = 0;
+      }
+      await req.mongo.collection('student_applications').updateOne(
+        { _id: new ObjectId(id) },
+        { $set: update }
+      );
+      res.json({ message: 'Done' });
+    } catch (err) {
+      console.error(`${action}-cancellation:`, err);
+      res.status(500).json({ error: 'Failed' });
+    }
+  });
+});
+
 // =============================
 // Route Fees Management
 // =============================
@@ -399,7 +466,7 @@ router.delete('/bus-routes/:id', async (req, res) => {
 router.get('/payment-details', async (req, res) => {
   try {
     const payments = await req.mongo.collection("student_applications")
-      .find({ payment_status: { $in: ['paid', 'verified'] } })
+      .find({ payment_status: { $in: ['paid', 'verified', 'offline', 'waived'] } })
       .sort({ payment_date: -1 })
       .toArray();
     res.json(payments.map(p => ({ ...p, id: p._id.toString() })));
@@ -411,7 +478,7 @@ router.get('/payment-details', async (req, res) => {
 router.get('/export-payments-excel', async (req, res) => {
   try {
     const payments = await req.mongo.collection("student_applications")
-      .find({ payment_status: { $in: ['paid', 'verified'] } })
+      .find({ payment_status: { $in: ['paid', 'verified', 'offline', 'waived'] } })
       .sort({ payment_date: -1 })
       .toArray();
     
@@ -438,30 +505,9 @@ router.post('/approve-payment-pass', async (req, res) => {
     const { id } = req.body;
     const collection = req.mongo.collection("student_applications");
     const app = await collection.findOne({ _id: new ObjectId(id) });
-    
-    let passNumber = app.passNumber;
-    let busNumber = app.busNumber;
-    
-    if (!passNumber) {
-      const currentYear = new Date().getFullYear();
-      const count = await collection.countDocuments({ passNumber: { $ne: null } });
-      passNumber = `PASS-${currentYear}-${String(count + 1).padStart(4, '0')}`;
-      
-      const busRecord = await req.mongo.collection("bus_routes").findOne({ route: app.route, is_active: 1 });
-      busNumber = app.busNumber || (busRecord ? busRecord.bus_number : 'PENDING');
-    }
+    if (!app) return res.status(404).json({ error: 'Application not found' });
 
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-    const qrData = JSON.stringify({
-      name: app.name,
-      regNo: app.regNo,
-      route: app.route,
-      validity: app.validity,
-      passNumber,
-      busNumber,
-      approvedAt: new Date().toISOString(),
-      passUrl: `${baseUrl}/pass/${app.regNo}`
-    });
+    const { passNumber, busNumber, qrData } = await buildPassIssueFields(req, app);
 
     await collection.updateOne(
       { _id: new ObjectId(id) },
@@ -489,6 +535,120 @@ router.post('/reject-payment-pass', async (req, res) => {
       { $set: { status: 'rejected', rejection_reason: reason, updatedAt: new Date().toISOString() } }
     );
     res.json({ message: 'Rejected' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+/** Admin: mark payment offline / waived / unpaid (matches dashboard controls). */
+router.post('/mark-payment', async (req, res) => {
+  try {
+    const { id, payment_type, note } = req.body;
+    if (!['offline', 'waived', 'unpaid'].includes(payment_type)) {
+      return res.status(400).json({ error: 'Invalid payment_type' });
+    }
+    const collection = req.mongo.collection('student_applications');
+    const appRecord = await collection.findOne({ _id: new ObjectId(id) });
+    if (!appRecord) return res.status(404).json({ error: 'Application not found' });
+
+    const baseUpdate = {
+      payment_note: note || '',
+      payment_marked_at: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (payment_type === 'offline' || payment_type === 'waived') {
+      const { passNumber, busNumber, qrData } = await buildPassIssueFields(req, appRecord);
+      await collection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: {
+          ...baseUpdate,
+          payment_status: payment_type,
+          passNumber,
+          busNumber,
+          qrData,
+          pass_approved: true,
+          status: 'approved'
+        }}
+      );
+    } else {
+      await collection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: {
+          ...baseUpdate,
+          payment_status: 'unpaid',
+          status: 'pending',
+          passNumber: null,
+          qrData: null,
+          pass_approved: false
+        }}
+      );
+    }
+    res.json({ message: 'Payment status updated' });
+  } catch (err) {
+    console.error('mark-payment:', err);
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// =============================
+// Colleges (admin CRUD; public list is /api/public/colleges)
+// =============================
+
+router.get('/colleges', async (req, res) => {
+  try {
+    const colleges = await req.mongo.collection('colleges').find({}).sort({ name: 1 }).toArray();
+    res.json(colleges.map((c) => ({
+      id: c._id.toString(),
+      name: c.name,
+      departments: c.departments || []
+    })));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch colleges' });
+  }
+});
+
+router.post('/colleges', async (req, res) => {
+  try {
+    const { name, departments } = req.body;
+    if (!name || !String(name).trim()) return res.status(400).json({ error: 'College name is required' });
+    const existing = await req.mongo.collection('colleges').findOne({
+      name: { $regex: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    });
+    if (existing) return res.status(400).json({ error: 'College already exists' });
+    const result = await req.mongo.collection('colleges').insertOne({
+      name: name.trim(),
+      departments: (departments || []).map((d) => String(d).trim()).filter(Boolean),
+      createdAt: new Date().toISOString()
+    });
+    res.json({ message: 'College added', id: result.insertedId.toString() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/colleges/:id', async (req, res) => {
+  try {
+    const { name, departments } = req.body;
+    const update = { updatedAt: new Date().toISOString() };
+    if (name) update.name = name.trim();
+    if (departments !== undefined) {
+      update.departments = departments.map((d) => String(d).trim()).filter(Boolean);
+    }
+    await req.mongo.collection('colleges').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: update }
+    );
+    res.json({ message: 'College updated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+router.delete('/colleges/:id', async (req, res) => {
+  try {
+    await req.mongo.collection('colleges').deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ message: 'College deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed' });
   }
@@ -583,7 +743,7 @@ router.post('/force-reset-password', async (req, res) => {
     const { targetUsername, newPassword, adminToken } = req.body;
     
     // Simple verification (in a real app, use proper JWT/Sessions)
-    if (adminToken !== 'admin-token') {
+    if (!isAdminServiceToken(adminToken)) {
       return res.status(403).json({ error: 'Unauthorized. Only Admin can perform this.' });
     }
 
@@ -630,7 +790,7 @@ router.post('/add-staff', async (req, res) => {
   try {
     const { username, password, role, department, adminToken } = req.body;
     
-    if (adminToken !== 'admin-token') {
+    if (!isAdminServiceToken(adminToken)) {
       return res.status(403).json({ error: 'Unauthorized. Only Admin can perform this.' });
     }
 

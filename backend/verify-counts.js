@@ -1,5 +1,6 @@
+const path = require('path');
 const { MongoClient } = require('mongodb');
-require('dotenv').config({ path: 'e:/E-PASS/.env' });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 async function verifyCounts() {
   const client = new MongoClient(process.env.MONGODB_URI);
