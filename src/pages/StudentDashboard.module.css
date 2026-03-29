@@ -1,19 +1,16 @@
 .pageWrapper {
   padding: 100px 1rem 4rem; /* More space for navbar */
-  background-color: #f8fafc;
-  background-image: linear-gradient(rgba(248, 250, 252, 0.8), rgba(248, 250, 252, 0.8)), url('../assets/college-bg.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
   position: relative;
   overflow-x: hidden;
 }
 
 .loginWrapper {
+  width: 100%;
+  min-height: calc(100vh - 80px); /* 80px is navbar height */
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 2rem !important;
+  padding: 5rem 1rem !important; /* Increased top/bottom padding to push card down */
 }
 
 .bgGlow {
@@ -37,14 +34,12 @@
 .loginCard {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px);
-  padding: 2.5rem;
-  border-radius: 32px;
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 3rem;
+  border-radius: 40px;
+  box-shadow: 0 40px 100px -20px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   scrollbar-width: none;
-  /* Hide scrollbar for Firefox */
   -ms-overflow-style: none;
-  /* Hide scrollbar for IE/Edge */
 }
 
 .loginCard::-webkit-scrollbar {

@@ -60,7 +60,7 @@ function Home() {
   };
 
   return (
-    <div className="home-root" style={{ position: 'relative', overflowX: 'hidden' }}>
+    <div className="home-root" style={{ position: 'static', overflowX: 'hidden' }}>
       {/* Background Decorative Elements */}
       <div className={styles.bgGlow1}></div>
       <div className={styles.bgGlow2}></div>
@@ -104,7 +104,7 @@ function Home() {
             </div>
           </motion.div>
 
-            {/* Removed floating card per request */}
+          {/* Removed floating card per request */}
         </div>
       </section>
 
