@@ -7,13 +7,11 @@
 
 .loginWrapper {
   width: 100%;
-  min-height: calc(95vh - 70px);
-  /* 80px is navbar height */
+  min-height: 100vh;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 5rem 1rem !important;
-  /* Increased top/bottom padding to push card down */
+  padding: 100px 1rem 40px !important;
 }
 
 .bgGlow {

@@ -2,14 +2,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f8fafc;
-  background-image: linear-gradient(rgba(248, 250, 252, 0.8), rgba(248, 250, 252, 0.8)), url('../assets/college-bg.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  padding: 100px 1rem 4rem;
+  padding: 80px 1rem 40px;
 }
 
 .bgGlow {
