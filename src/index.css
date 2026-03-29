@@ -74,26 +74,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 html {
-  height: 100%;
-  overflow: hidden;
   scroll-behavior: smooth;
-}
-
-#root {
-  height: 100%;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
-  background-color: #fcfcfd;
   color: var(--gray-800);
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
-  height: 100%;
-  overflow-y: auto;
+  min-height: 100vh;
   overflow-x: hidden;
+  background: #fdfdfd;
+  background-image: linear-gradient(rgba(253, 253, 253, 0.5), rgba(253, 253, 253, 0.5)), url('./assets/college-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
 /* Typography */
@@ -153,7 +151,6 @@ a:hover {
 
 /* Improve text contrast */
 .app-container {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
