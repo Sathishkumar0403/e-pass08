@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import Loader from '../components/Loader';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationAlert from '../components/NotificationAlert';
 import {
@@ -335,7 +336,11 @@ function StudentDashboard() {
                   />
                   <span className="forgot-password"><a href="#">Need help with login?</a></span>
                   <button className="login-button" type="submit" disabled={isLoading}>
-                    {isLoading ? <FaSpinner className={styles.spin} /> : 'Sign In'}
+                    {isLoading ? (
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <Loader size="1.4rem" color="white" />
+                      </div>
+                    ) : 'Sign In'}
                   </button>
                 </form>
                 <div className="social-account-container">

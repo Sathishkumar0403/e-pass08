@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import Loader from '../components/Loader';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUserShield, FaUser, FaLock, FaSignInAlt, FaEye, FaEyeSlash, FaExclamationCircle, FaTimes, FaShieldAlt, FaCheckCircle } from 'react-icons/fa';
@@ -150,7 +151,11 @@ function OfficialLogin() {
                 </span>
 
                 <button className="login-button" type="submit" disabled={loading}>
-                  {loading ? 'Verifying...' : 'Sign In'}
+                  {loading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      <Loader size="1.4rem" color="white" />
+                    </div>
+                  ) : 'Sign In'}
                 </button>
               </form>
               <div className="social-account-container">
