@@ -74,8 +74,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 html {
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
   scroll-behavior: smooth;
+}
+
+#root {
+  height: 100%;
 }
 
 body {
@@ -86,7 +91,8 @@ body {
   color: var(--gray-800);
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
-  min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
