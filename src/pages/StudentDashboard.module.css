@@ -1,16 +1,19 @@
 .pageWrapper {
-  padding: 100px 1rem 4rem; /* More space for navbar */
+  padding: 100px 1rem 4rem;
+  /* More space for navbar */
   position: relative;
   overflow-x: hidden;
 }
 
 .loginWrapper {
   width: 100%;
-  min-height: calc(100vh - 80px); /* 80px is navbar height */
+  min-height: calc(95vh - 70px);
+  /* 80px is navbar height */
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 5rem 1rem !important; /* Increased top/bottom padding to push card down */
+  padding: 5rem 1rem !important;
+  /* Increased top/bottom padding to push card down */
 }
 
 .bgGlow {
@@ -385,7 +388,8 @@
 .actionText .label {
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #0f172a !important; /* Force high contrast */
+  color: #0f172a !important;
+  /* Force high contrast */
   text-transform: none;
   letter-spacing: normal;
   padding: 0;
@@ -394,7 +398,8 @@
 
 .actionText .desc {
   font-size: 0.8125rem;
-  color: #2563eb !important; /* Force distinct blue color */
+  color: #2563eb !important;
+  /* Force distinct blue color */
   font-weight: 700;
 }
 
@@ -758,6 +763,7 @@
     border-radius: 24px;
   }
 }
+
 .refreshing {
   display: flex;
   align-items: center;
@@ -770,6 +776,11 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }

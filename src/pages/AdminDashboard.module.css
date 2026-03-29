@@ -1358,9 +1358,24 @@
 
   /* Settings cards stack */
   .settingCard {
+    padding: 1.5rem;
     flex-direction: column;
     align-items: stretch;
     gap: 1.5rem;
+  }
+
+  .fullWidthCard {
+    gap: 1.5rem;
+  }
+
+  .settingHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .settingHeader h3 {
+    font-size: 1.25rem;
   }
 
   .settingAction {
@@ -1368,8 +1383,21 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding-top: 1rem;
+    padding-top: 1.25rem;
     border-top: 1px solid #f1f5f9;
+  }
+
+  .responsiveGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .miniTable {
+    min-width: 450px;
+  }
+
+  .miniTable td {
+    padding: 1rem 0.75rem;
   }
 
   /* Success and error banners */
@@ -1401,13 +1429,73 @@
 
 .settingCard {
   background: white;
-  border-radius: 1rem;
-  padding: 2rem;
+  border-radius: 1.5rem;
+  padding: 2.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05);
   border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.settingCard:hover {
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.08);
+  border-color: #cbd5e1;
+}
+
+.fullWidthCard {
+  grid-column: 1 / -1;
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 2rem;
+}
+
+.settingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.subTableWrapper {
+  margin-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 1.5rem;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.miniTable {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+}
+
+.miniTable th {
+  text-align: left;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 1rem;
+  font-weight: 700;
+}
+
+.miniTable td {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #f8fafc;
+  vertical-align: middle;
+}
+
+.responsiveGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
 }
 
 .settingInfo h3 {

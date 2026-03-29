@@ -1323,123 +1323,111 @@ function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className={styles.settingCard} style={{ gridColumn: '1 / -1', flexDirection: 'column', alignItems: 'flex-start' }}>
-                    <div className={styles.settingInfo} style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                        <div>
-                          <h3 style={{ color: '#1e293b' }}>Manage Staff Credentials</h3>
-                          <p style={{ color: '#64748b' }}>View and reset passwords for HODs and Principals.</p>
-                        </div>
-                        <button 
-                          className={styles.addBtn}
-                          onClick={() => setShowAddStaffModal(true)}
-                          style={{ margin: 0, padding: '8px 16px' }}
-                        >
-                          <FaPlus /> Add Staff Account
-                        </button>
+                  <div className={`${styles.settingCard} ${styles.fullWidthCard}`}>
+                    <div className={styles.settingHeader}>
+                      <div>
+                        <h3>Manage Staff Credentials</h3>
+                        <p>View and reset passwords for HODs and Principals.</p>
                       </div>
-                      
-                      <div style={{ marginTop: '1.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem', width: '100%', overflowX: 'auto' }}>
-                        <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse' }}>
-                          <thead>
-                            <tr style={{ textAlign: 'left', color: '#000000', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                              <th style={{ padding: '0.8rem' }}>Username</th>
-                              <th style={{ padding: '0.8rem' }}>Role</th>
-                              <th style={{ padding: '0.8rem' }}>Department</th>
-                              <th style={{ padding: '0.8rem' }}>Action</th>
+                      <button 
+                        className={styles.addBtn}
+                        onClick={() => setShowAddStaffModal(true)}
+                        style={{ margin: 0, padding: '12px 24px', borderRadius: '14px' }}
+                      >
+                        <FaPlus /> Add Staff Account
+                      </button>
+                    </div>
+                    
+                    <div className={styles.subTableWrapper}>
+                      <table className={styles.miniTable}>
+                        <thead>
+                          <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {staffUsers.filter(u => u.username !== 'admin').length === 0 ? (
+                            <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8' }}>No staff members found.</td></tr>
+                          ) : staffUsers.filter(u => u.username !== 'admin').map(user => (
+                            <tr key={user._id || user.id}>
+                              <td style={{ fontWeight: 600 }}>{user.username}</td>
+                              <td><span className={styles.statusPill} style={{ background: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem' }}>{user.role?.toUpperCase()}</span></td>
+                              <td>{user.department || 'All'}</td>
+                              <td>
+                                <button 
+                                  className={styles.addBtn}
+                                  style={{ margin: 0, padding: '8px 16px', fontSize: '0.8rem', background: '#f59e0b', borderRadius: '10px' }}
+                                  onClick={() => { setSelectedStaff(user); setShowStaffResetModal(true); }}
+                                >
+                                  Reset Password
+                                </button>
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody>
-                            {staffUsers.filter(u => u.username !== 'admin').length === 0 ? (
-                              <tr><td colSpan="4" style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>No staff members found.</td></tr>
-                            ) : staffUsers.filter(u => u.username !== 'admin').map(user => (
-                              <tr key={user._id || user.id} style={{ borderBottom: '1px solid #f8fafc' }}>
-                                <td style={{ padding: '1rem', fontWeight: 600, color: '#000000' }}>{user.username}</td>
-                                <td style={{ padding: '1rem' }}><span className={styles.statusPill} style={{ background: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem' }}>{user.role?.toUpperCase()}</span></td>
-                                <td style={{ padding: '1rem', color: '#000000' }}>{user.department || 'All'}</td>
-                                <td style={{ padding: '1rem' }}>
-                                  <button 
-                                    className={styles.addBtn}
-                                    style={{ margin: 0, padding: '6px 14px', fontSize: '0.8rem', background: '#f59e0b' }}
-                                    onClick={() => { setSelectedStaff(user); setShowStaffResetModal(true); }}
-                                  >
-                                    Reset Password
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
-                  {/* ── Colleges & Departments Management ── */}
-                  <div className={styles.settingCard} style={{ gridColumn: '1 / -1', flexDirection: 'column', alignItems: 'flex-start' }}>
-                    <div className={styles.settingInfo} style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-                        <div>
-                          <h3 style={{ color: '#1e293b' }}>Colleges &amp; Departments</h3>
-                          <p style={{ color: '#64748b' }}>Manage colleges and their departments. Students see these options in the application form.</p>
-                        </div>
-                        <button
-                          className={styles.addBtn}
-                          onClick={openAddCollege}
-                          style={{ margin: 0, padding: '8px 16px' }}
-                        >
-                          <FaPlus /> Add College
-                        </button>
+                  <div className={`${styles.settingCard} ${styles.fullWidthCard}`}>
+                    <div className={styles.settingHeader}>
+                      <div>
+                        <h3>Colleges &amp; Departments</h3>
+                        <p>Manage colleges and their departments. Students see these options in the application form.</p>
                       </div>
+                      <button
+                        className={styles.addBtn}
+                        onClick={openAddCollege}
+                        style={{ margin: 0, padding: '12px 24px', borderRadius: '14px' }}
+                      >
+                        <FaPlus /> Add College
+                      </button>
+                    </div>
 
-                      {colleges.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', background: '#f8fafc', borderRadius: '12px' }}>
-                          <FaUserGraduate style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.4 }} />
-                          <p>No colleges added yet. Click "Add College" to get started.</p>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', width: '100%' }}>
-                          {colleges.map(college => (
-                            <div key={college.id} style={{
-                              background: '#f8fafc',
-                              borderRadius: '12px',
-                              padding: '1.2rem',
-                              border: '1px solid #e2e8f0',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '0.75rem'
-                            }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                                <h4 style={{ color: '#1e293b', fontSize: '0.9rem', fontWeight: 700, margin: 0, flex: 1 }}>{college.name}</h4>
-                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                                  <button onClick={() => openEditCollege(college)} className={styles.editBtn} title="Edit College" style={{ padding: '4px 8px' }}>
-                                    <FaEdit />
-                                  </button>
-                                  <button onClick={() => handleDeleteCollege(college.id, college.name)} className={styles.trashBtn} title="Delete College" style={{ padding: '4px 8px' }}>
-                                    <FaTrash />
-                                  </button>
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                {(college.departments || []).length === 0 ? (
-                                  <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontStyle: 'italic' }}>No departments added</span>
-                                ) : (
-                                  college.departments.map(dept => (
-                                    <span key={dept} style={{
-                                      background: '#e0e7ff',
-                                      color: '#4338ca',
-                                      padding: '3px 10px',
-                                      borderRadius: '20px',
-                                      fontSize: '0.72rem',
-                                      fontWeight: 600
-                                    }}>{dept}</span>
-                                  ))
-                                )}
+                    {colleges.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '3rem', background: '#f8fafc', borderRadius: '24px', border: '2px dashed #e2e8f0' }}>
+                        <FaUserGraduate style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.2 }} />
+                        <p style={{ color: '#64748b' }}>No colleges added yet. Click "Add College" to get started.</p>
+                      </div>
+                    ) : (
+                      <div className={styles.responsiveGrid}>
+                        {colleges.map(college => (
+                          <div key={college.id} style={{ 
+                            background: '#f8fafc', 
+                            padding: '1.5rem', 
+                            borderRadius: '20px', 
+                            border: '1px solid #f1f5f9',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '1rem'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <h4 style={{ margin: 0, fontWeight: 700 }}>{college.name}</h4>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button onClick={() => openEditCollege(college)} className={styles.editBtn} style={{ padding: '6px' }}><FaEdit /></button>
+                                <button onClick={() => handleDeleteCollege(college.id, college.name)} className={styles.trashBtn} style={{ padding: '6px' }}><FaTrash /></button>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {(college.departments || []).map((dept, i) => (
+                                <span key={i} style={{ 
+                                  background: 'white', 
+                                  color: '#475569', 
+                                  padding: '4px 12px', 
+                                  borderRadius: '10px', 
+                                  fontSize: '0.75rem', 
+                                  fontWeight: 600,
+                                  border: '1px solid #e2e8f0'
+                                }}>{dept}</span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                 </div>
