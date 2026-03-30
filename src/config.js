@@ -6,7 +6,7 @@ const BACKEND_BASE = (() => {
     const { protocol, hostname, port } = window.location;
     // Strictly stay on the same host if not localhost
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:3001`;
+      return `${protocol}//${hostname}:3003`;
     }
 // On production (e.g. Vercel), the backend is at the same origin
     return '';
