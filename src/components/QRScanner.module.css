@@ -111,3 +111,58 @@
 .statusMessage {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .detailRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+  }
+
+  .detailLabel {
+    font-size: 0.9rem;
+  }
+
+  .detailValue {
+    font-size: 0.95rem;
+  }
+
+  .statusBadge {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem;
+  }
+
+  .verificationInfo {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .detailRow {
+    padding: 0.4rem 0;
+  }
+
+  .detailLabel {
+    font-size: 0.85rem;
+  }
+
+  .detailValue {
+    font-size: 0.9rem;
+  }
+
+  .statusBadge {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+  }
+
+  .verificationInfo {
+    padding: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .verificationTime {
+    font-size: 0.8rem;
+  }
+}

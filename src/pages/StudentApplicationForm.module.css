@@ -89,4 +89,30 @@
     flex-direction: column;
     gap: 0.75rem;
   }
+
+  .pageContainer {
+    padding: 4rem 1rem 6rem;
+  }
+
+  .formSection {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .formTitle {
+    font-size: 1.75rem;
+  }
+
+  .formDescription {
+    font-size: 1rem;
+  }
+
+  .badge {
+    font-size: 0.75rem;
+  }
+
+  .pageContainer {
+    padding: 3rem 0.75rem 4rem;
+  }
 }

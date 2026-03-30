@@ -43,6 +43,64 @@
   padding: 0 1.5rem;
 }
 
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .page-container {
+    margin: 1rem auto;
+    padding: 0 1rem;
+  }
+
+  .form {
+    margin: 1rem auto;
+    padding: 1.5rem;
+    border-radius: 8px;
+  }
+
+  .form input {
+    padding: 0.625rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .button {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.9rem;
+  }
+
+  .pass-card {
+    margin: 1rem auto;
+    padding: 1.5rem;
+    border-radius: 6px;
+  }
+
+  .admin-panel,
+  .admin-login,
+  .home,
+  .student-dashboard {
+    padding: 1.5rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-container {
+    padding: 0 0.75rem;
+  }
+
+  .form {
+    padding: 1rem;
+  }
+
+  .pass-card {
+    padding: 1rem;
+  }
+
+  .admin-panel,
+  .admin-login,
+  .home,
+  .student-dashboard {
+    padding: 1rem 0.75rem;
+  }
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   margin: 0;

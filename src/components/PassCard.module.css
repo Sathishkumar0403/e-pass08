@@ -274,3 +274,91 @@
   margin-top: 0.75rem;
   font-weight: 500;
 }
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .mainContent {
+    padding: 2rem 1.5rem;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .photoBox {
+    width: 120px;
+    height: 150px;
+    margin: 0 auto;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .downloadButton {
+    position: static;
+    width: 100%;
+    margin-top: 1rem;
+    justify-content: center;
+  }
+
+  .validTill {
+    position: static;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .header {
+    text-align: center;
+  }
+
+  .footer {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainContent {
+    padding: 1.5rem 1rem;
+    border-radius: 8px;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+  }
+
+  .photoBox {
+    width: 100px;
+    height: 120px;
+  }
+
+  .value {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .label {
+    font-size: 0.8rem;
+  }
+
+  .qrSection {
+    padding: 1rem;
+  }
+
+  .qrLabel {
+    font-size: 0.8rem;
+  }
+}

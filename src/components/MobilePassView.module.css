@@ -136,3 +136,63 @@
 .container {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+  .container {
+    padding: 16px;
+    margin: 12px auto;
+    border-radius: 12px;
+  }
+
+  .header {
+    margin-bottom: 16px;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+
+  .validityTag {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .statusBadge {
+    padding: 8px 12px;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .studentName {
+    font-size: 20px;
+  }
+
+  .infoGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .infoItem {
+    padding: 12px;
+  }
+
+  .infoLabel {
+    font-size: 12px;
+  }
+
+  .infoValue {
+    font-size: 14px;
+  }
+
+  .footer {
+    padding-top: 12px;
+    margin-top: 12px;
+  }
+
+  .verificationTime,
+  .issuer {
+    font-size: 12px;
+  }
+}

@@ -540,4 +540,124 @@
     width: 100%;
     justify-content: center;
   }
+
+  .sectionTitle {
+    font-size: 2.5rem;
+  }
+
+  .featuresGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .portalsGrid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .portalCard {
+    padding: 2rem 1.5rem;
+  }
+
+  .statsGlass {
+    padding: 2rem 1rem;
+    margin: 0 1rem;
+    border-radius: 20px;
+  }
+
+  .statNumber {
+    font-size: 2.5rem;
+  }
+
+  .heroSection {
+    padding: 8rem 1rem 4rem;
+  }
+
+  .featuresSection {
+    padding: 6rem 1rem 6rem;
+  }
+
+  .portalsSection {
+    padding: 6rem 1rem;
+  }
+
+  .statsSection {
+    padding: 6rem 1rem;
+  }
+
+  .ctaSection {
+    padding: 4rem 1rem;
+  }
+
+  .ctaCard {
+    padding: 3rem 2rem;
+    border-radius: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .heroTitle {
+    font-size: 2.25rem;
+    line-height: 1.1;
+  }
+
+  .heroDescription {
+    font-size: 1.1rem;
+  }
+
+  .sectionTitle {
+    font-size: 2rem;
+  }
+
+  .sectionSubtitle {
+    font-size: 1.1rem;
+  }
+
+  .badge {
+    font-size: 0.75rem;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+  }
+
+  .featureCard {
+    padding: 2rem 1.5rem;
+  }
+
+  .portalCard h3 {
+    font-size: 1.25rem;
+  }
+
+  .portalCard p {
+    font-size: 0.9rem;
+  }
+
+  .portalBtn {
+    padding: 0.875rem;
+    font-size: 0.9rem;
+  }
+
+  .statNumber {
+    font-size: 2rem;
+  }
+
+  .statLabel {
+    font-size: 1rem;
+  }
+
+  .ctaTitle {
+    font-size: 1.75rem;
+  }
+
+  .ctaSubtitle {
+    font-size: 1rem;
+  }
+
+  .footer {
+    padding: 2rem 1rem 3rem;
+    font-size: 0.8rem;
+  }
 }
