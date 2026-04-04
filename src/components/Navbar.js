@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaHome, FaUserGraduate, FaUserShield, FaBars, FaTimes, FaBus, FaChevronDown } from 'react-icons/fa';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './Navbar.module.css';
 
@@ -9,7 +9,6 @@ function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,6 +24,10 @@ function Navbar() {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
+  };
+
+  const handleNavLinkClick = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   };
 
   const navItems = [
@@ -49,7 +52,14 @@ function Navbar() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Link to="/" className={styles.logoWrapper} onClick={closeMobileMenu}>
+            <Link
+              to="/"
+              className={styles.logoWrapper}
+              onClick={() => {
+                closeMobileMenu();
+                handleNavLinkClick();
+              }}
+            >
               <div className={styles.logoIcon}>
                 <FaBus />
               </div>
@@ -72,6 +82,7 @@ function Navbar() {
                   <Link
                     to={item.path}
                     className={`${styles.navLink} ${isActive ? styles.activeLink : ''}`}
+                    onClick={handleNavLinkClick}
                   >
                     <Icon className={styles.navIcon} />
                     <span className={styles.navLabel}>{item.label}</span>
@@ -120,7 +131,10 @@ function Navbar() {
                         key={item.path}
                         to={item.path}
                         className={`${styles.dropdownItem} ${location.pathname === item.path ? styles.dropdownItemActive : ''}`}
-                        onClick={() => setIsDropdownOpen(false)}
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          handleNavLinkClick();
+                        }}
                       >
                         <item.icon className={styles.dropdownIcon} />
                         <span>{item.label}</span>
@@ -175,7 +189,10 @@ function Navbar() {
                 <Link
                   to="/"
                   className={`${styles.mobileNavLink} ${styles.mobilePortalBtn} ${location.pathname === '/' ? styles.mobileActiveLink : ''}`}
-                  onClick={closeMobileMenu}
+                  onClick={() => {
+                    closeMobileMenu();
+                    handleNavLinkClick();
+                  }}
                 >
                   <div className={styles.portalIconWrapper}>
                     <FaHome />
@@ -190,7 +207,10 @@ function Navbar() {
                 <Link
                   to="/student"
                   className={`${styles.mobileNavLink} ${styles.mobilePortalBtn} ${location.pathname === '/student' ? styles.mobileActiveLink : ''}`}
-                  onClick={closeMobileMenu}
+                  onClick={() => {
+                    closeMobileMenu();
+                    handleNavLinkClick();
+                  }}
                 >
                   <div className={styles.portalIconWrapper}>
                     <FaUserGraduate />
@@ -205,7 +225,10 @@ function Navbar() {
                 <Link
                   to="/admin"
                   className={`${styles.mobileNavLink} ${styles.mobilePortalBtn} ${location.pathname === '/admin' ? styles.mobileActiveLink : ''}`}
-                  onClick={closeMobileMenu}
+                  onClick={() => {
+                    closeMobileMenu();
+                    handleNavLinkClick();
+                  }}
                 >
                   <div className={styles.portalIconWrapper}>
                     <FaUserShield />

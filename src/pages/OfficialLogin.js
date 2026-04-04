@@ -3,10 +3,9 @@ import styled from 'styled-components';
 import Loader from '../components/Loader';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUserShield, FaUser, FaLock, FaSignInAlt, FaEye, FaEyeSlash, FaExclamationCircle, FaTimes, FaShieldAlt, FaCheckCircle } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaTimes, FaShieldAlt, FaCheckCircle } from 'react-icons/fa';
 import { adminLogin, resetPassword } from '../utils/api';
 import styles from './AdminLogin.module.css';
-import commonStyles from './AdminDashboard.module.css'; // borrowing some modal styles
 
 function OfficialLogin() {
   const [login, setLogin] = useState({ username: '', password: '' });
@@ -52,7 +51,6 @@ function OfficialLogin() {
         localStorage.setItem('adminToken', response.token || 'true');
         localStorage.setItem('adminUser', JSON.stringify(response.user));
 
-        // Redirect based on role
         if (response.user.role === 'admin') {
           navigate('/admin/dashboard');
         } else if (response.user.role === 'hod' || response.user.role === 'principal') {
@@ -70,17 +68,20 @@ function OfficialLogin() {
     }
   };
 
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
+  const handleResetPassword = async () => {
     if (!resetForm.username || !resetForm.oldPassword || !resetForm.newPassword || !resetForm.confirmPassword) {
       setError('Please fill all fields');
       return;
     }
+
     if (resetForm.newPassword !== resetForm.confirmPassword) {
       setError('New passwords do not match');
       return;
     }
+
     setLoading(true);
+    setError('');
+
     try {
       await resetPassword(resetForm.username, resetForm.oldPassword, resetForm.newPassword);
       setSuccessMessage('Password reset successful! You can now login.');
@@ -88,10 +89,15 @@ function OfficialLogin() {
       setResetForm({ username: '', oldPassword: '', newPassword: '', confirmPassword: '' });
       setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
-      setError(err.message || 'Reset failed. Check your old password.');
+      setError(err?.message || 'Reset failed. Check your old password.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const closeResetModal = () => {
+    setShowResetModal(false);
+    setError('');
   };
 
   return (
@@ -109,7 +115,7 @@ function OfficialLogin() {
             <div className="container">
               <div className="heading">Official Portal</div>
               <form onSubmit={handleSubmit} className="form">
-                {error && <div style={{ color: '#ef4444', fontSize: '0.8rem', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+                {error && <div className={styles.inlineError}>{error}</div>}
                 <input
                   required
                   className="input"
@@ -134,17 +140,21 @@ function OfficialLogin() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{ position: 'absolute', right: '15px', top: '28px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    className={styles.passwordToggleBtn}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <FaEyeSlash /> : <FaEye />}
                   </button>
                 </div>
 
-                <span className="forgot-password">
+                <span className={styles.forgotPassword}>
                   <button
                     type="button"
-                    onClick={() => setShowResetModal(true)}
-                    style={{ background: 'none', border: 'none', color: '#0099ff', fontSize: '11px', cursor: 'pointer', padding: 0 }}
+                    onClick={() => {
+                      setError('');
+                      setShowResetModal(true);
+                    }}
+                    className={styles.forgotButton}
                   >
                     Forgot Password or Security Reset?
                   </button>
@@ -159,7 +169,7 @@ function OfficialLogin() {
                 </button>
               </form>
               {successMessage && (
-                <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#dcfce7', color: '#166534', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '0.8rem' }}>
+                <div className={styles.successBanner}>
                   <FaCheckCircle /> {successMessage}
                 </div>
               )}
@@ -167,65 +177,82 @@ function OfficialLogin() {
           </StyledWrapper>
         </motion.div>
 
-        {/* Reset Modal */}
         <AnimatePresence>
           {showResetModal && (
-            <div className={commonStyles.modalOverlay} onClick={() => setShowResetModal(false)}>
+            <div className={styles.resetOverlay} onClick={closeResetModal}>
               <motion.div
-                className={commonStyles.modalPanel}
-                onClick={e => e.stopPropagation()}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                className={styles.resetModal}
+                onClick={(e) => e.stopPropagation()}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
               >
-                <div className={commonStyles.modalHeader}>
-                  <h3>Official Security Reset</h3>
-                  <button onClick={() => setShowResetModal(false)} className={commonStyles.closeModalBtn}><FaTimes /></button>
+                <div className={styles.resetHeader}>
+                  <div className={styles.resetHeading}>
+                    <div className={styles.resetIcon}><FaShieldAlt /></div>
+                    <h3>Official Security Reset</h3>
+                  </div>
+                  <button onClick={closeResetModal} className={styles.closeResetBtn} aria-label="Close reset modal">
+                    <FaTimes />
+                  </button>
                 </div>
-                <div className={commonStyles.modalBody}>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
+
+                <div className={styles.resetBody}>
+                  <p className={styles.resetInfo}>
                     Verify your identity using your current password and username to update your security credentials.
                     <br /><strong>Forgot your old password?</strong> Please contact the System Administrator.
                   </p>
-                  <div className={commonStyles.inputGroup}>
-                    <label>Username / Official ID</label>
-                    <input
-                      type="text"
-                      value={resetForm.username}
-                      onChange={e => setResetForm({ ...resetForm, username: e.target.value })}
-                      placeholder="Enter your username"
-                    />
-                  </div>
-                  <div className={commonStyles.inputGroup}>
-                    <label>Current Password</label>
-                    <input
-                      type="password"
-                      value={resetForm.oldPassword}
-                      onChange={e => setResetForm({ ...resetForm, oldPassword: e.target.value })}
-                      placeholder="Enter current password"
-                    />
-                  </div>
-                  <div className={commonStyles.inputGroup}>
-                    <label>New Password</label>
-                    <input
-                      type="password"
-                      value={resetForm.newPassword}
-                      onChange={e => setResetForm({ ...resetForm, newPassword: e.target.value })}
-                      placeholder="At least 6 characters"
-                    />
-                  </div>
-                  <div className={commonStyles.inputGroup}>
-                    <label>Confirm New Password</label>
-                    <input
-                      type="password"
-                      value={resetForm.confirmPassword}
-                      onChange={e => setResetForm({ ...resetForm, confirmPassword: e.target.value })}
-                      placeholder="Repeat new password"
-                    />
+
+                  {error && <div className={styles.inlineError}>{error}</div>}
+
+                  <div className={styles.resetGrid}>
+                    <div className={`${styles.resetField} ${styles.fieldFull}`}>
+                      <label>Username / Official ID</label>
+                      <input
+                        type="text"
+                        value={resetForm.username}
+                        onChange={(e) => setResetForm({ ...resetForm, username: e.target.value })}
+                        placeholder="Enter your username"
+                      />
+                    </div>
+
+                    <div className={styles.resetField}>
+                      <label>Current Password</label>
+                      <input
+                        type="password"
+                        value={resetForm.oldPassword}
+                        onChange={(e) => setResetForm({ ...resetForm, oldPassword: e.target.value })}
+                        placeholder="Enter current password"
+                      />
+                    </div>
+
+                    <div className={styles.resetField}>
+                      <label>New Password</label>
+                      <input
+                        type="password"
+                        value={resetForm.newPassword}
+                        onChange={(e) => setResetForm({ ...resetForm, newPassword: e.target.value })}
+                        placeholder="At least 6 characters"
+                      />
+                    </div>
+
+                    <div className={`${styles.resetField} ${styles.fieldFull}`}>
+                      <label>Confirm New Password</label>
+                      <input
+                        type="password"
+                        value={resetForm.confirmPassword}
+                        onChange={(e) => setResetForm({ ...resetForm, confirmPassword: e.target.value })}
+                        placeholder="Repeat new password"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className={commonStyles.modalFooter}>
-                  <button onClick={handleResetPassword} className={commonStyles.saveBtn} disabled={loading}>
+
+                <div className={styles.resetFooter}>
+                  <button onClick={closeResetModal} className={styles.resetCancelBtn} type="button" disabled={loading}>
+                    Cancel
+                  </button>
+                  <button onClick={handleResetPassword} className={styles.resetSubmitBtn} disabled={loading} type="button">
                     {loading ? 'Processing...' : 'Update Password'}
                   </button>
                 </div>
@@ -243,7 +270,7 @@ export default OfficialLogin;
 const StyledWrapper = styled.div`
   .container {
     max-width: 380px;
-    background: #F8F9FD;
+    background: #f8f9fd;
     background: linear-gradient(0deg, rgb(255, 255, 255) 0%, rgb(244, 247, 251) 100%);
     border-radius: 40px;
     padding: 3rem 2.5rem;
@@ -255,7 +282,7 @@ const StyledWrapper = styled.div`
   .heading {
     text-align: center;
     font-weight: 900;
-    font-size: 30px;
+    font-size: clamp(1.6rem, 4.5vw, 1.9rem);
     color: rgb(16, 137, 211);
     margin-bottom: 5px;
   }
@@ -274,24 +301,12 @@ const StyledWrapper = styled.div`
     box-shadow: #cff0ff 0px 10px 10px -5px;
     border-inline: 2px solid transparent;
     font-family: inherit;
+    font-size: 0.96rem;
   }
 
   .form .input:focus {
     outline: none;
-    border-inline: 2px solid #12B1D1;
-  }
-
-  .form .forgot-password {
-    display: block;
-    margin-top: 15px;
-    margin-left: 10px;
-  }
-
-  .form .forgot-password button {
-    font-size: 11px;
-    color: #0099ff;
-    text-decoration: none;
-    font-weight: 600;
+    border-inline: 2px solid #12b1d1;
   }
 
   .form .login-button {
@@ -318,58 +333,16 @@ const StyledWrapper = styled.div`
     transform: scale(0.95);
   }
 
-  .social-account-container {
-    margin-top: 25px;
-  }
+  @media (max-width: 640px) {
+    .container {
+      max-width: 100%;
+      border-radius: 28px;
+      padding: 2rem 1.25rem;
+      border-width: 2px;
+    }
 
-  .social-account-container .title {
-    display: block;
-    text-align: center;
-    font-size: 11px;
-    color: rgb(170, 170, 170);
-    font-weight: 600;
-  }
-
-  .social-account-container .social-accounts {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin-top: 15px;
-  }
-
-  .social-account-container .social-accounts .social-button {
-    background: linear-gradient(45deg, rgb(0, 0, 0) 0%, rgb(112, 112, 112) 100%);
-    border: 4px solid white;
-    padding: 5px;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: grid;
-    place-content: center;
-    box-shadow: rgba(133, 189, 215, 0.5) 0px 12px 10px -8px;
-    transition: all 0.2s ease-in-out;
-    cursor: pointer;
-  }
-
-  .social-account-container .social-accounts .social-button .svg {
-    fill: white;
-    margin: auto;
-  }
-
-  .social-account-container .social-accounts .social-button:hover {
-    transform: scale(1.2);
-  }
-
-  .agreement {
-    display: block;
-    text-align: center;
-    margin-top: 20px;
-  }
-
-  .agreement a {
-    text-decoration: none;
-    color: #0099ff;
-    font-size: 10px;
+    .form .input {
+      font-size: 0.93rem;
+    }
   }
 `;

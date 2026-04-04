@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import PageLoader from './components/PageLoader';
+import ScrollToTop from './components/ScrollToTop';
 
 // Lazy load all pages for better performance and to show the loader during transitions
 const Home = lazy(() => import('./pages/Home'));
@@ -18,6 +19,7 @@ const StudentApplicationForm = lazy(() => import('./pages/StudentApplicationForm
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="app-container">
         <Navbar />
         <main className="content-area">
