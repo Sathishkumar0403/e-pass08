@@ -3,7 +3,7 @@
   position: relative;
   width: 100%;
   max-width: 100%;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
 /* Background Glows */
@@ -410,9 +410,10 @@
   padding: 8rem 2rem;
   background: #0f172a;
   color: white;
-  margin: 0 2rem;
+  margin: 0;
   border-radius: 40px;
-  max-width: calc(100% - 4rem);
+  max-width: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -574,7 +575,7 @@
 
   .statsGlass {
     padding: 2rem 1rem;
-    margin: 0 1rem;
+    margin: 0;
     border-radius: 20px;
   }
 
@@ -596,8 +597,9 @@
 
   .statsSection {
     padding: 6rem 1rem;
-    margin: 0 1rem;
-    max-width: calc(100% - 2rem);
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
     border-radius: 24px;
   }
 
@@ -673,8 +675,9 @@
   }
 
   .statsSection {
-    margin: 0 0.75rem;
-    max-width: calc(100% - 1.5rem);
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
   }
 
   .ctaButton {
@@ -686,5 +689,18 @@
   .footer {
     padding: 2rem 1rem 3rem;
     font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .heroSection,
+  .featuresSection,
+  .portalsSection,
+  .statsSection,
+  .ctaSection,
+  .footer {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
