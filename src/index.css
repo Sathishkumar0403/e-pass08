@@ -78,6 +78,12 @@ html {
   overflow-x: hidden;
 }
 
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -154,10 +160,16 @@ a:hover {
 .app-container {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .content-area {
   flex: 1;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .text-muted {

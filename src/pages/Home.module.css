@@ -1,3 +1,11 @@
+/* Page Root */
+.homeRoot {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 /* Background Glows */
 .bgGlow1 {
   position: absolute;
@@ -404,6 +412,8 @@
   color: white;
   margin: 0 2rem;
   border-radius: 40px;
+  max-width: calc(100% - 4rem);
+  overflow: hidden;
 }
 
 .statsGlass {
@@ -473,6 +483,7 @@
   align-items: center;
   gap: 1rem;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .footer {
@@ -539,6 +550,8 @@
   .ctaButton {
     width: 100%;
     justify-content: center;
+    font-size: 1rem;
+    gap: 0.75rem;
   }
 
   .sectionTitle {
@@ -583,6 +596,9 @@
 
   .statsSection {
     padding: 6rem 1rem;
+    margin: 0 1rem;
+    max-width: calc(100% - 2rem);
+    border-radius: 24px;
   }
 
   .ctaSection {
@@ -654,6 +670,17 @@
 
   .ctaSubtitle {
     font-size: 1rem;
+  }
+
+  .statsSection {
+    margin: 0 0.75rem;
+    max-width: calc(100% - 1.5rem);
+  }
+
+  .ctaButton {
+    padding: 0.9rem 1.1rem;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
   }
 
   .footer {

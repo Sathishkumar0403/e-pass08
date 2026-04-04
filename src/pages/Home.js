@@ -60,7 +60,7 @@ function Home() {
   };
 
   return (
-    <div className="home-root" style={{ position: 'static', overflowX: 'hidden' }}>
+    <div className={styles.homeRoot}>
       {/* Background Decorative Elements */}
       <div className={styles.bgGlow1}></div>
       <div className={styles.bgGlow2}></div>
