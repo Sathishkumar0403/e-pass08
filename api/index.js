@@ -192,9 +192,12 @@ app.get('/api/admin/applications', async (req, res) => {
     if (role === 'hod' && department) {
       query.$or = [{ department: department }, { branchYear: new RegExp(`^${department}`, 'i') }];
     }
-    const apps = await req.applications.find(query).sort({ _id: -1 }).allowDiskUse(true).toArray();
+    const apps = await req.applications.find(query, { allowDiskUse: true }).sort({ _id: -1 }).toArray();
     res.json(apps.map(a => ({ ...a, id: a._id.toString(), regNo: a.regNo || a.reg_no })));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('admin applications fetch failed', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch applications' });
+  }
 });
 
 const generatePassData = async (req, appRecord, countOffset = 1) => {
