@@ -192,7 +192,7 @@ app.get('/api/admin/applications', async (req, res) => {
     if (role === 'hod' && department) {
       query.$or = [{ department: department }, { branchYear: new RegExp(`^${department}`, 'i') }];
     }
-    const apps = await req.applications.find(query).sort({ createdAt: -1, created_at: -1 }).toArray();
+    const apps = await req.applications.find(query).sort({ createdAt: -1, created_at: -1 }).allowDiskUse(true).toArray();
     res.json(apps.map(a => ({ ...a, id: a._id.toString(), regNo: a.regNo || a.reg_no })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -269,7 +269,7 @@ app.get('/api/admin/payment-details', async (req, res) => {
   try {
     const apps = await req.applications.find({ 
       payment_status: { $in: ['paid', 'verified', 'processing', 'offline', 'waived'] } 
-    }).sort({ updatedAt: -1, payment_date: -1 }).toArray();
+    }).sort({ updatedAt: -1, payment_date: -1 }).allowDiskUse(true).toArray();
     res.json(apps.map(a => ({ ...a, id: a._id.toString(), regNo: a.regNo || a.reg_no })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -913,7 +913,7 @@ app.get('/api/student/settings-check', async (req, res) => {
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 app.get('/api/notifications', async (req, res) => {
   try {
-    const notes = await req.mongo.collection('notifications').find({ is_active: 1 }).sort({ created_at: -1 }).toArray();
+    const notes = await req.mongo.collection('notifications').find({ is_active: 1 }).sort({ created_at: -1 }).allowDiskUse(true).toArray();
     res.json(notes);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
