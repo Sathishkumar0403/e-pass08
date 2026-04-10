@@ -111,7 +111,7 @@ router.get('/applications', async (req, res) => {
     let query = {};
     if (role === 'hod' && department) query.branchYear = { $regex: new RegExp(`^${department}`, 'i') };
 
-    const apps = await req.mongo.collection("student_applications").find(query).sort({ _id: -1 }).toArray();
+    const apps = await req.mongo.collection("student_applications").find(query).sort({ _id: -1 }).allowDiskUse(true).toArray();
 
     const appsWithUrls = apps.map(app => ({
       ...app,
@@ -219,7 +219,7 @@ router.put('/applications/:id', async (req, res) => {
 // Export to Excel
 router.get('/export-excel', async (req, res) => {
   try {
-    const apps = await req.mongo.collection("student_applications").find({}).sort({ _id: -1 }).toArray();
+    const apps = await req.mongo.collection("student_applications").find({}).sort({ _id: -1 }).allowDiskUse(true).toArray();
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Students');
 
@@ -250,6 +250,7 @@ router.get('/cancellation-requests', async (req, res) => {
     const requests = await req.mongo.collection("student_applications")
       .find({ cancellation_requested: 1, cancelled: { $ne: 1 } })
       .sort({ cancellation_requested_at: -1 })
+      .allowDiskUse(true)
       .toArray();
     res.json(requests.map(r => ({ ...r, id: r._id.toString() })));
   } catch (err) {
@@ -468,6 +469,7 @@ router.get('/payment-details', async (req, res) => {
     const payments = await req.mongo.collection("student_applications")
       .find({ payment_status: { $in: ['paid', 'verified', 'offline', 'waived'] } })
       .sort({ payment_date: -1 })
+      .allowDiskUse(true)
       .toArray();
     res.json(payments.map(p => ({ ...p, id: p._id.toString() })));
   } catch (err) {
@@ -480,6 +482,7 @@ router.get('/export-payments-excel', async (req, res) => {
     const payments = await req.mongo.collection("student_applications")
       .find({ payment_status: { $in: ['paid', 'verified', 'offline', 'waived'] } })
       .sort({ payment_date: -1 })
+      .allowDiskUse(true)
       .toArray();
     
     const workbook = new ExcelJS.Workbook();
