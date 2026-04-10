@@ -192,7 +192,7 @@ app.get('/api/admin/applications', async (req, res) => {
     if (role === 'hod' && department) {
       query.$or = [{ department: department }, { branchYear: new RegExp(`^${department}`, 'i') }];
     }
-    const apps = await req.applications.find(query).sort({ createdAt: -1, created_at: -1 }).allowDiskUse(true).toArray();
+    const apps = await req.applications.find(query).sort({ _id: -1 }).allowDiskUse(true).toArray();
     res.json(apps.map(a => ({ ...a, id: a._id.toString(), regNo: a.regNo || a.reg_no })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

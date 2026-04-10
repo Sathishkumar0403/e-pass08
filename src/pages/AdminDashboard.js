@@ -185,7 +185,7 @@ function AdminDashboard() {
     } catch (err) {
       console.error(`Error refreshing ${type}:`, err);
       if (type === 'all' || type === 'applications') {
-        setError('Could not pull applications');
+        setError(err.message || 'Could not pull applications');
       }
     } finally {
       if (type === 'all' || type === 'applications') {
