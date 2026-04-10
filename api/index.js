@@ -192,7 +192,10 @@ app.get('/api/admin/applications', async (req, res) => {
     if (role === 'hod' && department) {
       query.$or = [{ department: department }, { branchYear: new RegExp(`^${department}`, 'i') }];
     }
-    const apps = await req.applications.find(query, { allowDiskUse: true }).sort({ _id: -1 }).toArray();
+    const apps = await req.applications.aggregate([
+      { $match: query },
+      { $sort: { _id: -1 } }
+    ], { allowDiskUse: true }).toArray();
     res.json(apps.map(a => ({ ...a, id: a._id.toString(), regNo: a.regNo || a.reg_no })));
   } catch (err) {
     console.error('admin applications fetch failed', err);
