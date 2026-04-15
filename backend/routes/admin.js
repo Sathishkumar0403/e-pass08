@@ -8,9 +8,9 @@ const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
-/** Accepts token returned by hardcoded admin login or legacy alias. */
+/** Accepts token returned by hardcoded admin login, DB admin login, or legacy alias. */
 function isAdminServiceToken(token) {
-  return token === 'admin-token' || token === 'admin-hardcoded-token';
+  return token === 'admin-token' || token === 'admin-hardcoded-token' || token === 'staff-db-token';
 }
 
 /** Shared pass/QR payload for approval and offline/waived marking. */
@@ -34,7 +34,7 @@ async function buildPassIssueFields(req, app) {
     passNumber,
     busNumber,
     approvedAt: new Date().toISOString(),
-    passUrl: `${baseUrl}/pass/${app.regNo}`
+    passUrl: `${baseUrl}/verify-pass/${app.regNo}`
   });
   return { passNumber, busNumber, qrData };
 }
@@ -109,7 +109,13 @@ router.get('/applications', async (req, res) => {
   try {
     const { role, department } = req.query;
     let query = {};
-    if (role === 'hod' && department) query.branchYear = { $regex: new RegExp(`^${department}`, 'i') };
+    // For HOD: don't filter server-side (department abbreviations don't match full names stored by students).
+    // The frontend applies the department filter after fetching.
+    // We only filter here if it's an exact match on the stored department field.
+    if (role === 'hod' && department) {
+      // Match on the 'department' field (exact or contains), case-insensitive
+      query.department = { $regex: new RegExp(department.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') };
+    }
 
     const apps = await req.mongo.collection("student_applications").find(query).sort({ _id: -1 }).allowDiskUse(true).toArray();
 
@@ -151,7 +157,7 @@ router.post('/approve', async (req, res) => {
       passNumber,
       busNumber,
       approvedAt: new Date().toISOString(),
-      passUrl: `${baseUrl}/pass/${app.regNo}`
+      passUrl: `${baseUrl}/verify-pass/${app.regNo}`
     });
 
     await collection.updateOne(

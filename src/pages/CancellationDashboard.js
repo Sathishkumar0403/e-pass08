@@ -298,7 +298,7 @@ function CancellationDashboard() {
                                                 </td>
                                                 <td>
                                                     <div className={styles.actionRow}>
-                                                        {adminUser?.role === 'hod' && !app.hod_approval && (
+                                                        {adminUser?.role === 'hod' && app.hod_approval !== 'approved' && app.hod_approval !== 'declined' && (
                                                             <div className={styles.btnGroup}>
                                                                 <button
                                                                     onClick={() => handleHodApprove(app.id)}
@@ -315,7 +315,7 @@ function CancellationDashboard() {
                                                             </div>
                                                         )}
 
-                                                        {adminUser?.role === 'principal' && app.admin_approval === 'approved' && !app.principal_approval && (
+                                                        {adminUser?.role === 'principal' && app.hod_approval === 'approved' && app.admin_approval === 'approved' && app.principal_approval !== 'approved' && app.principal_approval !== 'declined' && (
                                                             <div className={styles.btnGroup}>
                                                                 <button
                                                                     onClick={() => handlePrincipalApprove(app.id)}
@@ -334,19 +334,25 @@ function CancellationDashboard() {
 
                                                         {adminUser?.role === 'hod' && app.hod_approval === 'approved' && (
                                                             <div className={styles.processedBadge}>
-                                                                <FaCheckCircle /> Processed
+                                                                <FaCheckCircle /> Signed &amp; Forwarded
+                                                            </div>
+                                                        )}
+
+                                                        {adminUser?.role === 'hod' && app.hod_approval === 'declined' && (
+                                                            <div className={styles.awaitingBadge} style={{ color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}>
+                                                                Declined by You
                                                             </div>
                                                         )}
 
                                                         {adminUser?.role === 'principal' && app.principal_approval === 'approved' && (
                                                             <div className={styles.processedBadge}>
-                                                                <FaCheckCircle /> Processed
+                                                                <FaCheckCircle /> Final Approval Done
                                                             </div>
                                                         )}
 
-                                                        {adminUser?.role === 'principal' && (!app.admin_approval || app.admin_approval !== 'approved') && (
+                                                        {adminUser?.role === 'principal' && (!app.admin_approval || app.admin_approval !== 'approved') && app.principal_approval !== 'approved' && (
                                                             <div className={styles.awaitingBadge}>
-                                                                Awaiting Admin
+                                                                Awaiting Admin Approval
                                                             </div>
                                                         )}
                                                     </div>

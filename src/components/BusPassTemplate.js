@@ -4,6 +4,9 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { FaBus, FaShieldAlt } from 'react-icons/fa';
 import { getImageUrl } from '../config';
 
+// Always use the live site origin so the QR works when scanned from downloaded/printed passes
+const SITE_BASE_URL = window.location.origin;
+
 function BusPassTemplate({ studentData }) {
   if (!studentData) return null;
 
@@ -20,13 +23,9 @@ function BusPassTemplate({ studentData }) {
     userType,
   } = studentData;
 
-  const qrValue = `BUS PASS - A.E.R.I TRANSPORT
-━━━━━━━━━━━━━━
-👤 ${name || 'N/A'}
-🆔 ${regNo || 'N/A'}
-🚌 Bus: ${busNo || studentData.busNumber || 'N/A'}
-🎫 Pass: ${studentData.passNumber || passNo || 'N/A'}
-✅ Status: ${studentData.cancelled ? 'CANCELLED' : 'ACTIVE'}`;
+  // QR points to the real-time verify-pass page so scanning a downloaded/printed
+  // pass ALWAYS checks live DB status — cancelled passes show "ACCESS DENIED".
+  const qrValue = `${SITE_BASE_URL}/verify-pass/${regNo}`;
 
   return (
     <div className={styles.passContainer}>
