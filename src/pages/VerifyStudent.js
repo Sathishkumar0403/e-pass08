@@ -59,14 +59,14 @@ function VerifyStudent() {
               </div>
             </div>
 
-            <div className={styles.infoCard} style={{ background: 'white', padding: '2rem', borderRadius: '28px' }}>
-              <div className={styles.studentProf} style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+            <div className={styles.verifyStudentCard}>
+              <div className={styles.verifyStudentHead}>
                 <img
                   src={student.photo ? `/api/student/uploads/${student.photo}` : '/default-user.png'}
                   alt="Applicant"
-                  style={{ width: '120px', height: '150px', objectFit: 'cover', borderRadius: '16px', border: '1px solid #e2e8f0' }}
+                  className={styles.verifyStudentPhoto}
                 />
-                <div className={styles.infoList} style={{ flex: 1 }}>
+                <div className={styles.infoList}>
                   <div className={styles.infoRow}><FaUser /> <span>Name</span> <strong>{student.name}</strong></div>
                   <div className={styles.infoRow}><FaIdCard /> <span>Reg No</span> <strong>{student.regNo}</strong></div>
                   <div className={styles.infoRow}><strong>Route:</strong> <span>{student.route}</span></div>

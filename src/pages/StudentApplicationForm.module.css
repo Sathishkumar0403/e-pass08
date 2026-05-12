@@ -1,9 +1,11 @@
 .pageContainer {
   min-height: 100vh;
   padding: 6rem 1rem 8rem;
-  background-color: #f8fafc;
   position: relative;
   overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(250, 252, 255, 0.96), rgba(244, 247, 255, 0.96)),
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.08), transparent 32%);
 }
 
 .bgGlow {
@@ -27,6 +29,7 @@
 .formHeader {
   text-align: center;
   margin-bottom: 4rem;
+  padding: 0 0.5rem;
 }
 
 .badge {
@@ -68,6 +71,7 @@
 .metaInfo {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 2rem;
   color: #94a3b8;
   font-size: 0.8125rem;
@@ -83,6 +87,10 @@
 @media (max-width: 640px) {
   .formTitle {
     font-size: 2.25rem;
+  }
+
+  .formHeader {
+    margin-bottom: 2.5rem;
   }
 
   .metaInfo {

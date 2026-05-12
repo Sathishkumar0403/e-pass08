@@ -220,6 +220,29 @@
     color: #94a3b8;
 }
 
+.verifyStudentCard {
+    background: white;
+    padding: 2rem;
+    border-radius: 28px;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.verifyStudentHead {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.verifyStudentPhoto {
+    width: 120px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
 @media (max-width: 1024px) {
     .mainGrid {
         grid-template-columns: 1fr;
@@ -235,6 +258,33 @@
 
     .statusIcon {
         font-size: 2.5rem;
+    }
+
+    .passView,
+    .detailsView,
+    .verifyStudentCard {
+        padding: 1.25rem;
+        border-radius: 22px;
+    }
+
+    .infoRow {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .infoRow span {
+        min-width: 0;
+    }
+
+    .verifyStudentHead {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.25rem;
+    }
+
+    .verifyStudentPhoto {
+        width: 100px;
+        height: 128px;
     }
 }
 
@@ -353,6 +403,25 @@
 }
 
 @media (max-width: 480px) {
+    .verifyPage {
+        padding: 5.5rem 0.75rem 3rem;
+    }
+
+    .statusBanner {
+        padding: 1.5rem 1rem;
+        border-radius: 22px;
+    }
+
+    .cancelledRow {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cancelledRow strong,
+    .cancelledRow span {
+        text-align: left;
+    }
+
     .cancelledCard {
         padding: 2rem 1.5rem;
         border-radius: 24px;

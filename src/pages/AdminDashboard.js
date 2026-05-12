@@ -228,6 +228,17 @@ function AdminDashboard() {
   }, [adminUser, refreshData]);
 
   useEffect(() => {
+    if (window.innerWidth > 768) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
     let filtered = applications;
     if (statusFilter !== 'all') {
       filtered = filtered.filter(app => app.status === statusFilter);
@@ -692,7 +703,7 @@ function AdminDashboard() {
 
         <div className={styles.sidebarFooter}>
           <button onClick={handleLogout} className={styles.logoutBtn}>
-            <FaSignOutAlt /> Sign Out
+            <FaSignOutAlt /> <span>Sign Out</span>
           </button>
         </div>
       </aside>
@@ -711,6 +722,9 @@ function AdminDashboard() {
               <Link to="/" className={styles.navLink}><FaHome /> <span>Home</span></Link>
               <Link to="/student" className={styles.navLink}><FaUserGraduate /> <span>Student Portal</span></Link>
             </div>
+            <button onClick={handleLogout} className={styles.mobileSignOutBtn}>
+              <FaSignOutAlt /> <span>Sign Out</span>
+            </button>
             <button onClick={handleExportExcel} className={styles.exportBtn}>
               <FaFileExcel /> Export Data
             </button>
@@ -734,28 +748,24 @@ function AdminDashboard() {
             {activeTab === 'applications' && (
               <motion.div key="apps" variants={containerVariants} initial="hidden" animate="visible" exit="hidden">
                 <div className={styles.toolBar}>
-                  <div style={{ width: '100%', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
+                  <div className={styles.routeSeatSection}>
+                    <div className={styles.routeSeatHeader}>
+                      <span className={styles.routeSeatEyebrow}>Live allocation meter</span>
+                      <p>Track route occupancy at a glance while reviewing applications.</p>
+                    </div>
+                    <div className={styles.routeSeatStrip}>
                       {busRoutes.map(bus => {
                         const enrolled = busSeatCounts[bus.bus_number] || 0;
                         const capacity = bus.capacity || 60;
                         const isFull = enrolled >= capacity;
                         return (
-                          <div key={bus.id} style={{
-                            padding: '8px 16px',
-                            background: isFull ? '#fff1f2' : '#f0fdf4',
-                            border: `1px solid ${isFull ? '#fecaca' : '#bbf7d0'}`,
-                            borderRadius: '12px',
-                            fontSize: '0.8rem',
-                            fontWeight: '700',
-                            whiteSpace: 'nowrap',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                          }}>
-                            <FaBus style={{ color: isFull ? '#dc2626' : '#16a34a' }} />
+                          <div
+                            key={bus.id}
+                            className={`${styles.routeSeatPill} ${isFull ? styles.routeSeatPillFull : ''}`}
+                          >
+                            <FaBus />
                             <span>Bus {bus.bus_number}:</span>
-                            <span style={{ color: isFull ? '#dc2626' : '#16a34a' }}>{enrolled}/{capacity} filled</span>
+                            <strong>{enrolled}/{capacity} filled</strong>
                           </div>
                         );
                       })}
@@ -787,7 +797,7 @@ function AdminDashboard() {
 
                 <div className={styles.tableCard}>
                   <div className={styles.tableWrapper}>
-                    <table className={styles.modernTable}>
+                    <table className={`${styles.modernTable} ${styles.mobileStackTable}`}>
                       <thead>
                         <tr>
                           <th>Student</th>
@@ -802,10 +812,12 @@ function AdminDashboard() {
                       </thead>
                       <tbody>
                         {fetchingApps ? (
-                          <tr><td colSpan="7" className={styles.centerTd}><FaSpinner className={styles.spin} /> Loading...</td></tr>
+                          <tr><td colSpan="8" className={styles.centerTd}><FaSpinner className={styles.spin} /> Loading...</td></tr>
+                        ) : filteredApplications.length === 0 ? (
+                          <tr><td colSpan="8" className={styles.centerTd}>No applications match the current filters.</td></tr>
                         ) : filteredApplications.map(app => (
                           <tr key={app.id}>
-                            <td>
+                            <td data-label="Student">
                               <div className={styles.studentProf}>
                                 {app.photo ? (
                                   <img
@@ -822,20 +834,20 @@ function AdminDashboard() {
                                 </div>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="ID / Dept">
                               <div className={styles.flexCol}>
                                 <span className={styles.idVal}>{app.regNo}</span>
                                 <span className={styles.courseVal}>{app.department} / {app.year}</span>
                                 <span className={styles.deptBadge}>{app.department}</span>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Contact">
                               <div className={styles.flexCol}>
                                 <span className={styles.phoneVal}>{app.mobile}</span>
                                 <span className={styles.collegeVal}>{app.college}</span>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Route">
                               <div className={styles.flexCol}>
                                 <span className={styles.routeVal}>{app.route}</span>
                                 {app.busNumber ? (() => {
@@ -867,7 +879,7 @@ function AdminDashboard() {
                                 )}
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Documents">
                               <div className={styles.docStrip}>
                                 {app.aadharPhoto && (
                                   <button className={styles.docBtn} onClick={() => openImageModal(app.aadharPhoto, 'Aadhar Card')} title="Aadhar"><FaIdBadge /></button>
@@ -875,13 +887,13 @@ function AdminDashboard() {
                                 <button className={styles.docBtn} onClick={() => openImageModal(app.collegeIdPhoto, 'College ID')} title="ID Card"><FaIdCard /></button>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Status">
                               <span className={`${styles.statusPill} ${styles[app.status]}`}>
                                 {app.status}
                               </span>
                             </td>
                             {/* ── Payment Status Column ── */}
-                            <td>
+                            <td data-label="Payment">
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '130px' }}>
                                 {/* Badge showing current payment status */}
                                 <span style={{
@@ -954,7 +966,7 @@ function AdminDashboard() {
                                 )}
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Actions">
                               <div className={styles.actionRow}>
                                 {/* Central Admin Approvals */}
                                 {adminUser?.role === 'admin' && app.status === 'pending' && (
@@ -1149,7 +1161,7 @@ function AdminDashboard() {
               <motion.div key="payments" variants={containerVariants} initial="hidden" animate="visible" exit="hidden">
                 <div className={styles.tableCard}>
                   <div className={styles.tableWrapper}>
-                    <table className={styles.modernTable}>
+                    <table className={`${styles.modernTable} ${styles.mobileStackTable}`}>
                       <thead>
                         <tr>
                           <th>Registration No</th>
@@ -1163,8 +1175,8 @@ function AdminDashboard() {
                       <tbody>
                         {paymentDetails.map((payment, index) => (
                           <tr key={index}>
-                            <td className={styles.boldText}>{payment.regNo}</td>
-                            <td className={styles.monoText}>
+                            <td data-label="Registration No" className={styles.boldText}>{payment.regNo}</td>
+                            <td data-label="Payment ID" className={styles.monoText}>
                               {payment.feesBillPhoto ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                   <img 
@@ -1181,13 +1193,13 @@ function AdminDashboard() {
                                 payment.payment_id
                               )}
                             </td>
-                            <td className={styles.boldText}>
+                            <td data-label="Amount" className={styles.boldText}>
                               {(payment.payment_status === 'offline' || payment.payment_status === 'waived') 
                                 ? '--' 
                                 : `₹${payment.fee_amount || payment.payment_amount || 'N/A'}`}
                             </td>
-                            <td>{new Date(payment.payment_date).toLocaleString()}</td>
-                            <td>
+                            <td data-label="Date">{new Date(payment.payment_date).toLocaleString()}</td>
+                            <td data-label="Status">
                               <div className={styles.flexCol}>
                                 <span className={`${styles.statusPill} ${styles.approved}`} style={{ marginBottom: '4px' }}>
                                   {payment.payment_status === 'verified' ? 'Verified' : 'Paid'}
@@ -1197,7 +1209,7 @@ function AdminDashboard() {
                                 </span>
                               </div>
                             </td>
-                            <td>
+                            <td data-label="Actions">
                               <div className={styles.actionRow}>
                                 {payment.payment_status !== 'verified' && (
                                   <>
@@ -1246,7 +1258,7 @@ function AdminDashboard() {
 
                 <div className={styles.tableCard}>
                   <div className={styles.tableWrapper}>
-                    <table className={styles.modernTable}>
+                    <table className={`${styles.modernTable} ${styles.mobileStackTable}`}>
                       <thead>
                         <tr>
                           <th>Type</th>
@@ -1259,20 +1271,20 @@ function AdminDashboard() {
                       <tbody>
                         {notifications.map(n => (
                           <tr key={n.id}>
-                            <td>
+                            <td data-label="Type">
                               <span className={`${styles.statusPill} ${styles[n.type] || styles.pending}`}>
                                 {n.type.toUpperCase()}
                               </span>
                             </td>
-                            <td>
+                            <td data-label="Announcement Title">
                               <div className={styles.profInfo}>
                                 <span className={styles.profName}>{n.title}</span>
                                 <span className={styles.idVal}>{n.message.substring(0, 50)}...</span>
                               </div>
                             </td>
-                            <td><span className={styles.courseVal}>{n.target_role.toUpperCase()}</span></td>
-                            <td>{new Date(n.created_at).toLocaleDateString()}</td>
-                            <td>
+                            <td data-label="Target Role"><span className={styles.courseVal}>{n.target_role.toUpperCase()}</span></td>
+                            <td data-label="Date Posted">{new Date(n.created_at).toLocaleDateString()}</td>
+                            <td data-label="Actions">
                               <button onClick={() => handleDeleteNotification(n.id)} className={styles.trashBtn}><FaTrash /></button>
                             </td>
                           </tr>

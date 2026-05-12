@@ -15,6 +15,8 @@
   position: fixed;
   height: 100vh;
   z-index: 100;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .sidebarHeader {
@@ -23,6 +25,11 @@
   align-items: center;
   gap: 0.5rem;
   overflow: hidden;
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
+  backdrop-filter: blur(16px);
+  z-index: 2;
 }
 
 .logoBox {
@@ -79,20 +86,39 @@
 }
 
 .sidebarFooter {
-  padding: 2rem;
+  margin-top: auto;
+  padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.1), rgba(15, 23, 42, 0.98) 28%);
+  backdrop-filter: blur(14px);
 }
 
 .logoutBtn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
-  color: #cbd5e1;
+  color: #e2e8f0;
   font-weight: 700;
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   cursor: pointer;
   width: 100%;
+  min-height: 48px;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.logoutBtn:hover {
+  color: white;
+  background: rgba(239, 68, 68, 0.18);
+  transform: translateY(-1px);
+}
+
+.logoutBtn span {
+  white-space: nowrap;
 }
 
 /* Main Area */
@@ -108,6 +134,12 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 3rem;
+  padding: 1.5rem 1.75rem;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 28px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(16px);
 }
 
 .pageTitle {
@@ -128,6 +160,21 @@
   display: flex;
   align-items: center;
   gap: 2rem;
+}
+
+.mobileSignOutBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  padding: 0.8rem 1.15rem;
+  background: rgba(255, 255, 255, 0.8);
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  font-weight: 800;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
 }
 
 .publicNav {
@@ -173,8 +220,87 @@
 /* ToolBar */
 .toolBar {
   display: flex;
-  gap: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 2.5rem;
+  padding: 1.1rem;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(14px);
+}
+
+.routeSeatSection {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.routeSeatHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.routeSeatHeader p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #516072;
+}
+
+.routeSeatEyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #5b21b6;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.routeSeatStrip {
+  display: flex;
+  gap: 0.85rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.routeSeatStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.routeSeatPill {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.routeSeatPill strong {
+  color: inherit;
+}
+
+.routeSeatPillFull {
+  background: #fff1f2;
+  border-color: #fecaca;
+  color: #dc2626;
 }
 
 .searchBox {
@@ -252,6 +378,21 @@
 
 .tableWrapper {
   overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.tableWrapper::-webkit-scrollbar {
+  height: 10px;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.tableWrapper::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .modernTable {
@@ -1167,12 +1308,20 @@
 
   .logoLabel,
   .navItem span,
-  .sidebarFooter {
+  .logoutBtn span {
     display: none;
   }
 
   .navItem {
     justify-content: center;
+  }
+
+  .sidebarFooter {
+    padding-inline: 0.75rem;
+  }
+
+  .logoutBtn {
+    padding: 0;
   }
 
   .mainArea {
@@ -1252,6 +1401,11 @@
 
   .sidebarFooter {
     display: block;
+    padding-inline: 1rem;
+  }
+
+  .logoutBtn span {
+    display: inline;
   }
 
   /* Main area takes full width on mobile */
@@ -1268,6 +1422,8 @@
     align-items: flex-start;
     gap: 1rem;
     margin-bottom: 1.5rem;
+    padding: 1.15rem;
+    border-radius: 22px;
   }
 
   .headerActions {
@@ -1277,9 +1433,15 @@
     width: 100%;
   }
 
+  .mobileSignOutBtn {
+    display: inline-flex;
+    width: 100%;
+  }
+
   .publicNav {
     flex-wrap: wrap;
     gap: 0.75rem;
+    width: 100%;
   }
 
   .exportBtn {
@@ -1295,6 +1457,7 @@
   .toolBar {
     flex-direction: column;
     gap: 0.75rem;
+    padding: 1rem;
   }
 
   .filterBox {
@@ -1343,17 +1506,79 @@
     min-height: auto;
   }
 
-  /* Make table horizontally scrollable */
-  .tableWrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .mobileStackTable thead {
+    display: none;
   }
 
-  .modernTable th,
-  .modernTable td {
-    padding: 0.875rem 1rem;
-    font-size: 0.8125rem;
-    white-space: nowrap;
+  .mobileStackTable,
+  .mobileStackTable tbody,
+  .mobileStackTable tr,
+  .mobileStackTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .mobileStackTable tr {
+    padding: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .mobileStackTable tr:last-child {
+    border-bottom: none;
+  }
+
+  .mobileStackTable td {
+    display: grid;
+    grid-template-columns: minmax(92px, 112px) 1fr;
+    gap: 0.8rem;
+    align-items: start;
+    padding: 0.8rem 0;
+    border-bottom: 1px dashed #edf2f7;
+    white-space: normal;
+  }
+
+  .mobileStackTable td:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .mobileStackTable td::before {
+    content: attr(data-label);
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-top: 0.2rem;
+  }
+
+  .mobileStackTable .centerTd {
+    display: block;
+    padding: 1rem 0;
+    border-bottom: none;
+  }
+
+  .mobileStackTable .centerTd::before {
+    display: none;
+  }
+
+  .studentProf {
+    align-items: flex-start;
+  }
+
+  .docStrip {
+    flex-wrap: wrap;
+  }
+
+  .mobileStackTable .actionRow,
+  .mobileStackTable .btnGroup {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mobileStackTable .cancellationWorkflow {
+    min-width: 0;
   }
 
   /* Settings cards stack */
@@ -1620,6 +1845,15 @@
   .addBtn {
     padding: 10px 16px;
     font-size: 0.8125rem;
+  }
+
+  .mobileStackTable td {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .mobileStackTable td::before {
+    padding-top: 0;
   }
 
   .statusPill {

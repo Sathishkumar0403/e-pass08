@@ -259,4 +259,47 @@
         padding: 1.5rem;
         border-radius: 20px;
     }
+
+    .displayPage {
+        padding-inline: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .displayPage {
+        padding: 5.4rem 0.75rem 3rem;
+    }
+
+    .header {
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .navGroup,
+    .actionGroup {
+        width: 100%;
+    }
+
+    .actionGroup {
+        flex-wrap: wrap;
+    }
+
+    .primaryAction {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+
+    .secondaryAction {
+        flex: 1 1 calc(50% - 0.375rem);
+    }
+
+    .cardFrame,
+    .metaCard {
+        padding: 1rem;
+        border-radius: 18px;
+    }
+
+    .securityBox {
+        flex-direction: column;
+    }
 }

@@ -92,6 +92,17 @@ function CancellationDashboard() {
         }
     }, [adminUser, fetchRequests]);
 
+    useEffect(() => {
+        if (window.innerWidth > 768) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [sidebarOpen]);
+
     const handleHodApprove = async (id) => {
         try {
             await hodApproveCancellation(id);
@@ -212,7 +223,7 @@ function CancellationDashboard() {
 
                 <div className={styles.sidebarFooter}>
                     <button onClick={handleLogout} className={styles.logoutBtn}>
-                        <FaSignOutAlt /> Sign Out
+                        <FaSignOutAlt /> <span>Sign Out</span>
                     </button>
                 </div>
             </aside>
@@ -229,6 +240,9 @@ function CancellationDashboard() {
                     <div className={styles.headerActions}>
                         <button onClick={() => navigate('/')} className={styles.navLink}>
                             <FaHome /> <span>Home</span>
+                        </button>
+                        <button onClick={handleLogout} className={styles.mobileSignOutBtn}>
+                            <FaSignOutAlt /> <span>Sign Out</span>
                         </button>
                     </div>
                 </header>
@@ -249,7 +263,7 @@ function CancellationDashboard() {
                     <motion.div variants={containerVariants} initial="hidden" animate="visible">
                         <div className={styles.tableCard}>
                             <div className={styles.tableWrapper}>
-                                <table className={styles.modernTable}>
+                                <table className={`${styles.modernTable} ${styles.mobileStackTable}`}>
                                     <thead>
                                         <tr>
                                             <th>Student Details</th>
@@ -265,7 +279,7 @@ function CancellationDashboard() {
                                             <tr><td colSpan="4" className={styles.centerTd}>No pending cancellation requests.</td></tr>
                                         ) : requests.map(app => (
                                             <tr key={app.id}>
-                                                <td>
+                                                <td data-label="Student">
                                                     <div className={styles.studentProf}>
                                                         {app.photo ? (
                                                             <img
@@ -282,12 +296,12 @@ function CancellationDashboard() {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td>
+                                                <td data-label="Reason">
                                                     <div className={styles.reasonBox}>
                                                         {app.cancellation_reason || 'No reason provided'}
                                                     </div>
                                                 </td>
-                                                <td>
+                                                <td data-label="Approval Status">
                                                     <div className={styles.cancellationStatus}>
                                                         <span>{app.hod_approval === 'approved' ? '✅ HOD' : '⌛ HOD'}</span>
                                                         <FaExchangeAlt className={styles.statusIcon} />
@@ -296,7 +310,7 @@ function CancellationDashboard() {
                                                         <span>{app.principal_approval === 'approved' ? '✅ PRIN' : '⌛ PRIN'}</span>
                                                     </div>
                                                 </td>
-                                                <td>
+                                                <td data-label="Actions">
                                                     <div className={styles.actionRow}>
                                                         {adminUser?.role === 'hod' && app.hod_approval !== 'approved' && app.hod_approval !== 'declined' && (
                                                             <div className={styles.btnGroup}>

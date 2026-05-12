@@ -24,6 +24,7 @@
   align-items: center;
   gap: 1.25rem;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
 .cardIcon {
@@ -56,6 +57,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
+  min-width: 0;
 }
 
 .fullWidth {
@@ -408,5 +410,45 @@
 
   .form {
     gap: 2rem;
+  }
+
+  .verificationBox,
+  .otpRow {
+    flex-direction: column;
+  }
+
+  .verifyBtn,
+  .otpBtn {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1.4rem 1rem;
+    border-radius: 22px;
+  }
+
+  .cardTitle {
+    font-size: 1.4rem;
+  }
+
+  .input,
+  .select,
+  .textarea,
+  .readOnlyInput {
+    font-size: 0.94rem;
+    padding-left: 3.1rem;
+  }
+
+  .fileBox {
+    padding: 1rem;
+  }
+
+  .fileBadge {
+    position: static;
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 0.35rem;
   }
 }

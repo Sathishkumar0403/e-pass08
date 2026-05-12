@@ -231,6 +231,7 @@
   grid-template-columns: 1fr 400px;
   gap: 2rem;
   padding: 0 1rem;
+  align-items: start;
 }
 
 .passPanel,
@@ -737,9 +738,17 @@
   .modalBody {
     padding: 1.5rem;
   }
+
+  .uploadActions {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
+  .pageWrapper {
+    padding-inline: 0.75rem;
+  }
+
   .welcomeText {
     font-size: 1.5rem;
   }
@@ -759,6 +768,19 @@
   .loginCard {
     padding: 1.5rem;
     border-radius: 24px;
+  }
+
+  .dashboardHeader,
+  .dashboardGrid {
+    padding-inline: 0;
+  }
+
+  .panelHeader {
+    padding: 1rem 1rem 0.9rem;
+  }
+
+  .modalFooter {
+    padding: 1rem;
   }
 }
 

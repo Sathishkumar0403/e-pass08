@@ -1,219 +1,340 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaBus, FaShieldAlt, FaQrcode, FaMobile, FaArrowRight, FaClock, FaUserGraduate } from 'react-icons/fa';
+import {
+  FaArrowRight,
+  FaBus,
+  FaCheckCircle,
+  FaClock,
+  FaMobile,
+  FaQrcode,
+  FaShieldAlt,
+  FaUserGraduate
+} from 'react-icons/fa';
+import { gsap } from 'gsap';
 import styles from './Home.module.css';
 
 function Home() {
   const navigate = useNavigate();
+  const homeRef = useRef(null);
+
+  const features = [
+    {
+      icon: FaQrcode,
+      title: 'Instant QR Validation',
+      description: 'Scan-ready passes with fast verification flow for students and staff at every checkpoint.'
+    },
+    {
+      icon: FaShieldAlt,
+      title: 'Verified Access Control',
+      description: 'Built for approvals, department workflows, and fraud-resistant student travel identity.'
+    },
+    {
+      icon: FaMobile,
+      title: 'Mobile-First Experience',
+      description: 'Apply, pay, download, and manage the full bus pass journey from a polished mobile interface.'
+    },
+    {
+      icon: FaClock,
+      title: 'Faster Turnaround',
+      description: 'Clear status tracking and role-based dashboards keep applications moving without confusion.'
+    }
+  ];
+
+  const heroStats = [
+    { value: '10K+', label: 'Passes Managed' },
+    { value: '24/7', label: 'Verification Ready' },
+    { value: '4 Roles', label: 'Admin Workflow' }
+  ];
+
+  const journeyPoints = [
+    'Students apply once with streamlined digital onboarding.',
+    'Officials verify faster with a clearer multi-step approval chain.',
+    'Generated passes stay secure, searchable, and ready for campus transit.'
+  ];
+
+  const portalCards = [
+    {
+      icon: FaUserGraduate,
+      title: 'Student Portal',
+      description: 'Track application status, pay fees, and carry your digital pass with confidence.',
+      button: 'Open Student Login',
+      action: () => navigate('/student')
+    },
+    {
+      icon: FaShieldAlt,
+      title: 'Official Portal',
+      description: 'Manage approvals, validation, and operational visibility across the full workflow.',
+      button: 'Open Official Login',
+      action: () => navigate('/admin')
+    }
+  ];
 
   const handleApply = () => {
     navigate('/apply');
   };
 
-  const features = [
-    {
-      icon: FaQrcode,
-      title: "Digital QR Code",
-      description: "Secure, scannable QR verification for your daily commute."
-    },
-    {
-      icon: FaShieldAlt,
-      title: "Anti-Forgery",
-      description: "Advanced cryptographic security to prevent unauthorized pass use."
-    },
-    {
-      icon: FaMobile,
-      title: "Wallet Ready",
-      description: "Always with you on your mobile device. No physical card needed."
-    },
-    {
-      icon: FaClock,
-      title: "Fast Track",
-      description: "Instant application and automated approval workflow."
-    }
-  ];
+  useEffect(() => {
+    document.body.classList.add('home-page');
 
-  const stats = [
-    { number: "10k+", label: "Active Passes" },
-    { number: "24/7", label: "Verification" },
-    { number: "0.5s", label: "Scan Speed" },
-    { number: "100%", label: "Secure" }
-  ];
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '[data-gsap="hero-copy"] > *',
+        { opacity: 0, y: 28 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.78,
+          ease: 'power3.out',
+          stagger: 0.1
+        }
+      );
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
+      gsap.fromTo(
+        '[data-gsap="hero-visual"]',
+        { opacity: 0, x: 28, y: 24 },
+        {
+          opacity: 1,
+          x: 0,
+          y: 0,
+          duration: 0.9,
+          ease: 'power3.out',
+          delay: 0.2
+        }
+      );
+
+      gsap.to('[data-gsap="ambient-left"]', {
+        y: -24,
+        x: 12,
+        duration: 6,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut'
+      });
+
+      gsap.to('[data-gsap="ambient-right"]', {
+        y: 20,
+        x: -10,
+        duration: 5.3,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut'
+      });
+
+      gsap.fromTo(
+        '[data-gsap="feature-card"]',
+        { opacity: 0, y: 20 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.6,
+          ease: 'power2.out',
+          stagger: 0.08,
+          scrollTrigger: undefined
+        }
+      );
+    }, homeRef);
+
+    let frameId = null;
+
+    const updateParallax = () => {
+      if (!homeRef.current) return;
+      const scrollY = window.scrollY || 0;
+      homeRef.current.style.setProperty('--hero-shift', `${Math.min(scrollY * 0.16, 120)}px`);
+      homeRef.current.style.setProperty('--ambient-shift', `${Math.min(scrollY * 0.08, 60)}px`);
+      frameId = null;
+    };
+
+    const handleScroll = () => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(updateParallax);
+    };
+
+    updateParallax();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      document.body.classList.remove('home-page');
+      window.removeEventListener('scroll', handleScroll);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
       }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1
-    }
-  };
+      ctx.revert();
+    };
+  }, []);
 
   return (
-    <div className={styles.homeRoot}>
-      {/* Background Decorative Elements */}
-      <div className={styles.bgGlow1}></div>
-      <div className={styles.bgGlow2}></div>
+    <div className={styles.homeRoot} ref={homeRef}>
+      <div className={styles.ambientLeft} data-gsap="ambient-left" />
+      <div className={styles.ambientRight} data-gsap="ambient-right" />
 
-      {/* Hero Section */}
       <section className={styles.heroSection}>
-        <div className={styles.heroContent}>
+        <div className={styles.heroGrid}>
           <motion.div
-            className={styles.heroText}
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            className={styles.heroCopy}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            data-gsap="hero-copy"
           >
-            <div className={styles.badge}>
-              <span className={styles.badgeDot}></span>
-              Next-Gen Transportation
+            <div className={styles.heroEyebrow}>
+              <span className={styles.eyebrowDot} />
+              AERI Smart Transit Platform
             </div>
+
             <h1 className={styles.heroTitle}>
-              <span className={styles.titleGradient}> AERI Intelligent</span> <br />
-              Bus Pass System
+              Premium Digital
+              <span className={styles.heroAccent}> Bus Pass Experience</span>
             </h1>
+
             <p className={styles.heroDescription}>
-              Modernizing college transit with secure digital identification.
-              Seamless application, instant verification, and smart management.
+              A cleaner, faster, and more trustworthy way to manage student travel.
+              From application to approval to verification, every step is designed to feel modern.
             </p>
-            <div className={styles.heroButtons}>
+
+            <div className={styles.heroActions}>
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 className={styles.primaryButton}
                 onClick={handleApply}
               >
-                Get Started <FaArrowRight className={styles.buttonIcon} />
+                Start Application
+                <FaArrowRight />
               </motion.button>
-              <button
+
+              <motion.button
+                whileHover={{ y: -2, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 className={styles.secondaryButton}
-                onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => document.getElementById('experience')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                Learn More
-              </button>
+                Explore Experience
+              </motion.button>
+            </div>
+
+            <div className={styles.heroStats}>
+              {heroStats.map((stat) => (
+                <div key={stat.label} className={styles.statCard}>
+                  <span className={styles.statValue}>{stat.value}</span>
+                  <span className={styles.statLabel}>{stat.label}</span>
+                </div>
+              ))}
             </div>
           </motion.div>
 
-          {/* Removed floating card per request */}
+          <div className={styles.heroVisual} data-gsap="hero-visual">
+            <div className={styles.visualFrame}>
+              <div className={styles.visualImage}>
+                <div className={styles.imageBadge}>Campus Transit View</div>
+              </div>
+
+              <div className={styles.visualPanel}>
+                <div className={styles.panelHeader}>
+                  <div>
+                    <p className={styles.panelKicker}>Workflow Snapshot</p>
+                    <h3 className={styles.panelTitle}>Designed for speed, clarity, and trust</h3>
+                  </div>
+                  <div className={styles.panelBusIcon}>
+                    <FaBus />
+                  </div>
+                </div>
+
+                <div className={styles.panelList}>
+                  {journeyPoints.map((point) => (
+                    <div key={point} className={styles.panelListItem}>
+                      <FaCheckCircle />
+                      <span>{point}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className={styles.featuresSection}>
-        <motion.div
-          className={styles.sectionHeader}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={itemVariants}
-        >
-          <h2 className={styles.sectionTitle}>Smart Features</h2>
-          <p className={styles.sectionSubtitle}>Everything you need for a modern commute</p>
-        </motion.div>
+      <section id="experience" className={styles.featuresSection}>
+        <div className={styles.sectionHeading}>
+          <p className={styles.sectionEyebrow}>Curated Experience</p>
+          <h2 className={styles.sectionTitle}>A fresh landing page built for a premium first impression</h2>
+          <p className={styles.sectionDescription}>
+            The interface now leads with stronger structure, cleaner motion, and a more intentional visual language.
+          </p>
+        </div>
 
-        <motion.div
-          className={styles.featuresGrid}
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-        >
-          {features.map((feature, index) => (
+        <div className={styles.featureGrid}>
+          {features.map((feature) => (
             <motion.div
-              key={index}
+              key={feature.title}
               className={styles.featureCard}
-              variants={itemVariants}
-              whileHover={{ y: -10 }}
+              whileHover={{ y: -8 }}
+              transition={{ duration: 0.2 }}
+              data-gsap="feature-card"
             >
               <div className={styles.featureIcon}>
                 <feature.icon />
               </div>
               <h3 className={styles.featureTitle}>{feature.title}</h3>
-              <p className={styles.featureDescription}>{feature.description}</p>
+              <p className={styles.featureText}>{feature.description}</p>
             </motion.div>
           ))}
-        </motion.div>
-      </section>
-
-      {/* Portals Section */}
-      <section className={styles.portalsSection}>
-        <motion.div
-          className={styles.sectionHeader}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={itemVariants}
-        >
-          <h2 className={styles.sectionTitle}>Portals & Access</h2>
-          <p className={styles.sectionSubtitle}>Select your portal to continue</p>
-        </motion.div>
-
-        <div className={styles.portalsGrid}>
-          <motion.div
-            className={styles.portalCard}
-            whileHover={{ y: -10 }}
-            onClick={() => navigate('/student')}
-          >
-            <div className={`${styles.portalIcon} ${styles.studentIcon}`}><FaUserGraduate /></div>
-            <h3>Student Portal</h3>
-            <p>View pass status, download digital card, and pay fees.</p>
-            <button className={styles.portalBtn}>Login as Student</button>
-          </motion.div>
-
-          <motion.div
-            className={styles.portalCard}
-            whileHover={{ y: -10 }}
-            onClick={() => navigate('/admin')}
-          >
-            <div className={`${styles.portalIcon} ${styles.hodIcon}`}><FaShieldAlt /></div>
-            <h3>Official Portal</h3>
-            <p>Admin, HOD, and Principal verification & management portal.</p>
-            <button className={styles.portalBtn}>Login as Official</button>
-          </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className={styles.statsSection}>
-        <div className={styles.statsGlass}>
-          {stats.map((stat, index) => (
-            <div key={index} className={styles.statItem}>
-              <div className={styles.statNumber}>{stat.number}</div>
-              <div className={styles.statLabel}>{stat.label}</div>
-            </div>
+      <section className={styles.accessSection}>
+        <div className={styles.accessStory}>
+          <p className={styles.sectionEyebrow}>Portal Access</p>
+          <h2 className={styles.accessTitle}>Everything important is clearer, calmer, and easier to reach</h2>
+          <p className={styles.accessText}>
+            The new landing page separates platform value, workflow clarity, and portal entry points so users know exactly where to go next.
+          </p>
+        </div>
+
+        <div className={styles.portalGrid}>
+          {portalCards.map((portal) => (
+            <motion.div
+              key={portal.title}
+              className={styles.portalCard}
+              whileHover={{ y: -8 }}
+              transition={{ duration: 0.22 }}
+            >
+              <div className={styles.portalIcon}>
+                <portal.icon />
+              </div>
+              <h3 className={styles.portalTitle}>{portal.title}</h3>
+              <p className={styles.portalText}>{portal.description}</p>
+              <button className={styles.portalButton} onClick={portal.action}>
+                {portal.button}
+                <FaArrowRight />
+              </button>
+            </motion.div>
           ))}
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className={styles.ctaSection}>
         <div className={styles.ctaCard}>
-          <h2 className={styles.ctaTitle}>Ready to modernize your travel?</h2>
-          <p className={styles.ctaSubtitle}>Students can log in to check their bus pass status and manage their travel pass.</p>
+          <p className={styles.sectionEyebrow}>Ready to launch</p>
+          <h2 className={styles.ctaTitle}>Give students a landing page that feels modern before they even log in</h2>
+          <p className={styles.ctaText}>
+            Clean visuals, better hierarchy, and a more premium travel identity now define the home experience.
+          </p>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -2, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             className={styles.ctaButton}
             onClick={handleApply}
           >
-            Apply for E-Pass <FaArrowRight />
+            Apply for E-Pass
+            <FaArrowRight />
           </motion.button>
         </div>
       </section>
 
       <footer className={styles.footer}>
-        <p>&copy; 2026 E-Bus Pass. Intelligent Transportation solutions.</p>
-        <p className={styles.developerCredit}>Developed with ❤️ by Sathish Kumar & Team CSE</p>
+        <p>&copy; 2026 E-Pass. Smart mobility for campus travel.</p>
+        <p className={styles.footerSubtext}>Designed for a cleaner first impression and smoother student journey.</p>
       </footer>
     </div>
   );
